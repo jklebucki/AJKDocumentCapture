@@ -1,6 +1,7 @@
 @page "/documents/{DocumentId:guid}"
 @inject IInvoiceRepository InvoiceRepository
 @inject IProcessingJobRepository ProcessingJobRepository
+@inject LoadExtractionArtifactHandler ExtractionArtifactHandler
 
 <PageTitle>Document details</PageTitle>
 
@@ -64,7 +65,32 @@
                         <li @key="@(processingEvent.OccurredAt.ToUnixTimeMilliseconds().ToString() + processingEvent.Kind)">
                             <time datetime="@processingEvent.OccurredAt.ToString("O")">@processingEvent.OccurredAt.LocalDateTime.ToString("dd MMM yyyy, HH:mm:ss")</time>
                             <strong>@processingEvent.Kind</strong>
-                            <span>@DescribeEvent(processingEvent)</span>
+                            <span class="event-detail">
+                                @DescribeEvent(processingEvent)
+                                @if (IsOllamaExtraction(processingEvent))
+                                {
+                                    <button class="icon-button event-json-button" type="button" @onclick="ToggleExtractionJson" aria-label="Show Ollama JSON response" aria-expanded="@isExtractionJsonVisible" data-tooltip="Show Ollama JSON response">
+                                        <img src="icons/bootstrap-icons-1.13.1/file-earmark-code.svg" alt="" aria-hidden="true" />
+                                    </button>
+                                    @if (isExtractionJsonVisible)
+                                    {
+                                        <aside class="artifact-popper" role="dialog" aria-label="Ollama JSON response">
+                                            <div class="artifact-popper-heading">
+                                                <strong>Ollama response JSON</strong>
+                                                <button class="button button-quiet button-small" type="button" @onclick="ToggleExtractionJson">Close</button>
+                                            </div>
+                                            @if (extractionJson is not null)
+                                            {
+                                                <pre><code>@extractionJson</code></pre>
+                                            }
+                                            else
+                                            {
+                                                <p>The Ollama response artifact is not available for this run.</p>
+                                            }
+                                        </aside>
+                                    }
+                                }
+                            </span>
                         </li>
                     }
                 </ol>
@@ -77,11 +103,14 @@
     [Parameter] public Guid DocumentId { get; set; }
     private InvoiceDocument? document;
     private IReadOnlyList<ProcessingEvent> events = [];
+    private string? extractionJson;
+    private bool isExtractionJsonVisible;
 
     protected override async Task OnParametersSetAsync()
     {
         document = await InvoiceRepository.GetAsync(new DocumentId(DocumentId), CancellationToken.None);
         events = await ProcessingJobRepository.ListEventsAsync(new DocumentId(DocumentId), CancellationToken.None);
+        extractionJson = await ExtractionArtifactHandler.HandleAsync(new DocumentId(DocumentId), CancellationToken.None);
     }
 
     private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
@@ -99,4 +128,9 @@
         nameof(ProcessingStatus.Validating) => "C# InvoiceValidator is applying deterministic validation rules.",
         _ => detail
     };
+
+    private static bool IsOllamaExtraction(ProcessingEvent processingEvent) =>
+        processingEvent.Stage == nameof(ProcessingStatus.Extracting) && processingEvent.Kind == "Started";
+
+    private void ToggleExtractionJson() => isExtractionJsonVisible = !isExtractionJsonVisible;
 }
