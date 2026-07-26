@@ -1,0 +1,47 @@
+COMARCH EDI XML INVOICE 7.77 — PODSUMOWANIE WALIDACJI
+Data wykonania: 2026-07-26
+
+STATUS: PASS
+
+1. Kompletność strukturalna względem tabel specyfikacji, strony 1–40
+   - odczytane wiersze XML: 876
+   - węzły kompletnego drzewa: 769
+   - Faktura: 246/246 ścieżek, brakujące 0, nadmiarowe 0
+   - Faktura korekta: 330/330 ścieżek, brakujące 0, nadmiarowe 0
+   - Faktura KSeF: 547/547 ścieżek, brakujące 0, nadmiarowe 0
+   - Faktura korekta KSeF: 595/595 ścieżek, brakujące 0, nadmiarowe 0
+
+2. XSD 1.0
+   - 4/4 schematów kompiluje się w lxml/libxml2
+   - 8/8 próbek minimalnych i pełnych przechodzi walidację lxml/libxml2
+   - 8/8 próbek przechodzi niezależną walidację Java JAXP/Xerces
+
+3. Reguły między-polowe
+   - 4/4 plików ISO Schematron kompiluje się
+   - 4/4 minimalnych próbek przechodzi Schematron
+   - 4/4 skompilowanych walidatorów XSLT/SVRL przechodzi w Java XSLT
+   - test ujemny bez wymaganej alternatywy daty zwraca failed-assert=1
+
+4. Testy regresyjne
+   - 15/15 PASS, w tym testy ujemne formatów, kodów profilu KSeF, NIP, dat i reguł warunkowych
+
+5. Odtwarzalność
+   - generator uruchomiony ponownie z parametrami --pdf i --out
+   - wygenerowany XSD KSeF i README są binarnie identyczne z plikami w pakiecie
+
+Środowisko testowe
+- Python 3.13.5
+- lxml / libxml2 / libxslt: (6, 1, 1, 0) (2, 14, 6) (1, 1, 43)
+- pdfplumber: 0.11.9
+- openjdk version "21.0.10" 2026-01-20
+
+Szczegóły:
+- completeness-report.txt
+- validation-report.txt
+- validation-java-xerces.txt
+- validation-schematron-xslt.txt
+- regression-tests.txt
+- RULE_COVERAGE.md
+
+WAŻNE:
+Pakiet jest techniczną rekonstrukcją opublikowanej specyfikacji Comarch 7.77, a nie oficjalnym XSD podpisanym lub wydanym przez Comarch. Do walidacji produkcyjnej należy stosować odpowiedni profil XSD, a następnie odpowiadający mu walidator XSLT/Schematron. Reguły wymagające danych zewnętrznych, oceny prawnej, konfiguracji odbiorcy albo porównania z fakturą pierwotną są oznaczone w RULE_COVERAGE.md.
