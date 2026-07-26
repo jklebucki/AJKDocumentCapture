@@ -3,7 +3,7 @@ using InvoiceCapture.Domain;
 
 namespace InvoiceCapture.Application;
 
-public sealed class LoadDocumentReviewHandler(IInvoiceRepository invoices, IBlobStore blobStore)
+public sealed class LoadDocumentReviewHandler(IInvoiceRepository invoices, IBlobStore blobStore, IComarchInvoiceXmlValidator comarchValidator)
 {
     public async Task<DocumentReviewResult?> HandleAsync(DocumentId documentId, CancellationToken cancellationToken)
     {
@@ -17,7 +17,16 @@ public sealed class LoadDocumentReviewHandler(IInvoiceRepository invoices, IBlob
             var json = await reader.ReadToEndAsync(cancellationToken);
             using var parsed = JsonDocument.Parse(json);
             var preview = ComarchEcodKsefXmlPreviewRenderer.Render(parsed.RootElement);
-            return new DocumentReviewResult(document, preview.Xml, preview.Message);
+            if (preview.Xml is null || preview.ProfileId is null)
+            {
+                return new DocumentReviewResult(document, null, preview.Message);
+            }
+
+            var validation = await comarchValidator.ValidateAsync(preview.ProfileId, preview.Xml, cancellationToken);
+            var message = validation.IsValid
+                ? null
+                : $"Comarch ECOD/KSeF XSD validation failed: {string.Join(" ", validation.Errors)}";
+            return new DocumentReviewResult(document, preview.Xml, message);
         }
         catch (FileNotFoundException)
         {

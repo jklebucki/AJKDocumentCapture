@@ -10,7 +10,7 @@ public sealed class LoadDocumentReviewHandlerTests
     {
         var id = DocumentId.New();
         var document = new InvoiceDocument(id, new SourceDocument(id, "invoice.pdf", "application/pdf", "hash", 10, "source/original.pdf"));
-        var handler = new LoadDocumentReviewHandler(new ReviewInvoiceRepository(document), new MissingArtifactBlobStore());
+        var handler = new LoadDocumentReviewHandler(new ReviewInvoiceRepository(document), new MissingArtifactBlobStore(), new ReviewComarchValidator());
 
         var result = await handler.HandleAsync(id, CancellationToken.None);
 
@@ -34,5 +34,10 @@ public sealed class LoadDocumentReviewHandlerTests
         public Task<Stream> OpenReadAsync(string relativePath, CancellationToken cancellationToken) => throw new DirectoryNotFoundException();
         public Task SaveArtifactAsync(DocumentId documentId, string relativePath, Stream content, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<StoredBlob> SaveOriginalAsync(DocumentId documentId, string extension, Stream content, CancellationToken cancellationToken) => throw new NotSupportedException();
+    }
+
+    private sealed class ReviewComarchValidator : IComarchInvoiceXmlValidator
+    {
+        public Task<ComarchXmlValidationResult> ValidateAsync(string profileId, string xml, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

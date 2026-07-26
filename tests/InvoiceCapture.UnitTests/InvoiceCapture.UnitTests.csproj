@@ -24,4 +24,8 @@
     <ProjectReference Include="..\..\src\InvoiceCapture.Infrastructure\InvoiceCapture.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\specs\ComarchInvoice\*.xsd" Link="specs\ComarchInvoice\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

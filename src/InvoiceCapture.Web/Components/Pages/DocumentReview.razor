@@ -23,11 +23,22 @@
             <section class="workspace-card review-pane" aria-labelledby="xml-title">
                 <div class="review-pane-heading">
                     <h2 id="xml-title">Comarch ECOD/KSeF XML</h2>
-                    <span class="status-pill status-warning">Base profile · XSD pending</span>
+                    @if (review.ExtractionXml is not null && review.ArtifactMessage is null)
+                    {
+                        <span class="status-pill status-ready">XSD valid</span>
+                    }
+                    else
+                    {
+                        <span class="status-pill status-warning">XSD review needed</span>
+                    }
                 </div>
                 @if (review.ExtractionXml is not null)
                 {
                     <pre class="xml-preview"><code>@review.ExtractionXml</code></pre>
+                    @if (review.ArtifactMessage is not null)
+                    {
+                        <p class="inline-alert" role="alert">@review.ArtifactMessage</p>
+                    }
                 }
                 else
                 {

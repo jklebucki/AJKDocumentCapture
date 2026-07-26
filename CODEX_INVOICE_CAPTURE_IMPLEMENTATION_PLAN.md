@@ -182,8 +182,9 @@ IClock
 ```
 
 - [x] Zapisuj surową, kanoniczną odpowiedź Ollama jako `artifacts/extraction.json`; dostęp do niej w historii przetwarzania jest możliwy z przycisku ikonowego.
-- [x] Kontrakt ekstrakcji zawiera bazowy profil `comarch-ecod-ksef-7.77`: nagłówek, strony, pozycje, podsumowanie i VAT; brak danych jest `null`, bez zgadywania.
-- [ ] Produkcyjny eksport XML Comarch: wymaga zatwierdzonego XSD oraz testowych komunikatów zaakceptowanych przez docelowy ERP. Podgląd review realizuje obecnie wyłącznie preflight profilu bazowego.
+- [x] Kontrakt ekstrakcji Comarch 7.77 zawiera pełne, uporządkowane drzewo XML (`name`/`value`/`children`), zdolne odwzorować wszystkie ścieżki czterech dostarczonych XSD (do 595) bez zgadywania.
+- [x] Podgląd review renderuje XML deterministycznie i waliduje go względem właściwego dostarczonego XSD Comarch 7.77; błąd pozostaje widoczny przy dokumencie.
+- [ ] Produkcyjny eksport XML Comarch: wymaga zatwierdzonego przez Comarch XSD, testowych komunikatów zaakceptowanych przez docelowy ERP oraz reguł Schematron zależnych od kontekstu biznesowego. Podgląd review nie zapisuje jeszcze `output/document.xml`.
 
 - [ ] Nie używaj nazwy przesłanej przez użytkownika jako ścieżki. Generuj UUID; nazwę przechowuj tylko jako metadane.
 - [ ] `IBlobStore` przygotuj pod późniejsze S3/MinIO, ale nie wdrażaj drugiego backendu w MVP.

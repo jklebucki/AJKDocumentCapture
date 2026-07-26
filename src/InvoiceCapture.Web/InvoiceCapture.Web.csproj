@@ -6,6 +6,10 @@
     <ProjectReference Include="..\InvoiceCapture.Contracts\InvoiceCapture.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\specs\ComarchInvoice\*.xsd" Link="specs\ComarchInvoice\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

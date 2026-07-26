@@ -17,19 +17,19 @@ public sealed class ComarchEcodKsefXmlPreviewRendererTests
         Assert.Contains("<Document-Invoice>", result.Xml, StringComparison.Ordinal);
         Assert.Contains("<Invoice-Header>", result.Xml, StringComparison.Ordinal);
         Assert.Contains("<TaxID>5260250274</TaxID>", result.Xml, StringComparison.Ordinal);
-        Assert.Contains("<ItemDescription>Usługa</ItemDescription>", result.Xml, StringComparison.Ordinal);
+        Assert.Contains("<StreetAndNumber>Main 2</StreetAndNumber>", result.Xml, StringComparison.Ordinal);
         Assert.Contains("<Tax-Summary>", result.Xml, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Render_returns_a_preflight_message_instead_of_inventing_a_document_when_a_required_value_is_missing()
+    public void Render_returns_a_message_when_the_xml_mapping_has_the_wrong_root()
     {
-        using var extraction = JsonDocument.Parse(CompleteExtraction.Replace("\"invoiceNumber\":\"FV/1\"", "\"invoiceNumber\":null", StringComparison.Ordinal));
+        using var extraction = JsonDocument.Parse(CompleteExtraction.Replace("\"name\":\"Document-Invoice\"", "\"name\":\"Unexpected\"", StringComparison.Ordinal));
 
         var result = ComarchEcodKsefXmlPreviewRenderer.Render(extraction.RootElement);
 
         Assert.Null(result.Xml);
-        Assert.Contains("header.invoiceNumber", result.Message, StringComparison.Ordinal);
+        Assert.Contains("Document-Invoice", result.Message, StringComparison.Ordinal);
     }
 
     private const string CompleteExtraction = """
@@ -38,11 +38,38 @@ public sealed class ComarchEcodKsefXmlPreviewRendererTests
       "sourceBlockIds":[],
       "comarchEcodKsef":{
         "profile":"comarch-ecod-ksef-7.77",
-        "header":{"invoiceNumber":"FV/1","invoiceDate":"2026-07-26","salesDate":"2026-07-26","invoiceCurrency":"PLN","documentFunctionCode":"O","messageType":"INV","invoicePaymentDueDate":null,"invoicePaymentMeans":null},
-        "buyer":{"taxId":"5260250274","name":"Buyer","streetAndNumber":"Main 1","cityName":"Warsaw","postalCode":"00-001","country":"PL","vatPrefix":"PL","accountNumber":null},
-        "seller":{"taxId":"5260250274","name":"Seller","streetAndNumber":"Main 2","cityName":"Warsaw","postalCode":"00-002","country":"PL","vatPrefix":"PL","accountNumber":null},
-        "lines":[{"lineNumber":1,"itemDescription":"Usługa","invoiceQuantity":1,"unitOfMeasure":"C62","invoiceUnitNetPrice":100,"taxRate":23,"vatRate":23,"taxCategoryCode":"S","taxAmount":23,"netAmount":100,"grossAmount":123}],
-        "summary":{"totalLines":1,"totalNetAmount":100,"totalTaxAmount":23,"totalGrossAmount":123,"taxSummary":[{"taxRate":23,"taxCategoryCode":"S","taxAmount":23,"taxableAmount":100,"grossAmount":123}]}
+        "xml":{"name":"Document-Invoice","value":null,"children":[
+          {"name":"Invoice-Header","value":null,"children":[
+            {"name":"InvoiceNumber","value":"FV/1","children":[]},
+            {"name":"InvoiceDate","value":"2026-07-26","children":[]},
+            {"name":"InvoiceCurrency","value":"PLN","children":[]},
+            {"name":"DocumentFunctionCode","value":"O","children":[]}
+          ]},
+          {"name":"Invoice-Parties","value":null,"children":[
+            {"name":"Buyer","value":null,"children":[
+              {"name":"TaxID","value":"5260250274","children":[]},
+              {"name":"Name","value":"Buyer","children":[]},
+              {"name":"StreetAndNumber","value":"Main 1","children":[]},
+              {"name":"Country","value":"PL","children":[]}
+            ]},
+            {"name":"Seller","value":null,"children":[
+              {"name":"TaxID","value":"5260250274","children":[]},
+              {"name":"Name","value":"Seller","children":[]},
+              {"name":"StreetAndNumber","value":"Main 2","children":[]},
+              {"name":"Country","value":"PL","children":[]}
+            ]}
+          ]},
+          {"name":"Invoice-Summary","value":null,"children":[
+            {"name":"TotalLines","value":"0","children":[]},
+            {"name":"TotalGrossAmount","value":"123.00","children":[]},
+            {"name":"Tax-Summary","value":null,"children":[
+              {"name":"Tax-Summary-Line","value":null,"children":[
+                {"name":"TaxAmount","value":"23.00","children":[]},
+                {"name":"TaxableAmount","value":"100.00","children":[]}
+              ]}
+            ]}
+          ]}
+        ]}
       }
     }
     """;

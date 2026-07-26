@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Xml.Linq;
 using System.Net;
 using InvoiceCapture.Application;
 using InvoiceCapture.Domain;
@@ -90,6 +91,13 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
             return;
         }
 
+        if (comarch.TryGetProperty("xml", out _))
+        {
+            ApplyComarchXmlExtraction(document, root, type);
+            document.SetValidationIssues(validator.Validate(document));
+            return;
+        }
+
         var header = GetObject(comarch, "header");
         var seller = GetObject(comarch, "seller");
         var buyer = GetObject(comarch, "buyer");
@@ -113,6 +121,77 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
             vatSummaries,
             totals);
         document.SetValidationIssues(validator.Validate(document));
+    }
+
+    private static void ApplyComarchXmlExtraction(InvoiceDocument document, JsonElement root, DocumentType type)
+    {
+        var preview = ComarchEcodKsefXmlPreviewRenderer.Render(root);
+        if (preview.Xml is null)
+        {
+            document.ApplyExtraction(type, null, null, null, null, null, "PLN", null, null, [], [], null);
+            return;
+        }
+
+        var xml = XDocument.Parse(preview.Xml);
+        var header = xml.Root?.Element("Invoice-Header");
+        var seller = xml.Root?.Element("Invoice-Parties")?.Element("Seller");
+        var buyer = xml.Root?.Element("Invoice-Parties")?.Element("Buyer");
+        var summary = xml.Root?.Element("Invoice-Summary");
+        DateOnly? issueDate = DateOnly.TryParse(Value(header, "InvoiceDate"), out var parsedIssueDate) ? parsedIssueDate : null;
+        DateOnly? dueDate = DateOnly.TryParse(Value(header, "InvoicePaymentDueDate"), out var parsedDueDate) ? parsedDueDate : null;
+        var vatSummaries = ParseComarchVatSummaries(summary);
+        var grossAmount = GetDecimal(summary, "TotalGrossAmount");
+        var totals = grossAmount is not null && vatSummaries.Count > 0
+            ? new InvoiceTotals(vatSummaries.Sum(x => x.NetAmount), vatSummaries.Sum(x => x.VatAmount), grossAmount.Value)
+            : null;
+        document.ApplyExtraction(
+            type,
+            seller is null ? null : new InvoiceParty(Value(seller, "Name"), Value(seller, "TaxID"), Value(seller, "StreetAndNumber")),
+            buyer is null ? null : new InvoiceParty(Value(buyer, "Name"), Value(buyer, "TaxID"), Value(buyer, "StreetAndNumber")),
+            Value(header, "InvoiceNumber"),
+            issueDate,
+            dueDate,
+            Value(header, "InvoiceCurrency") ?? "PLN",
+            Value(header, "InvoicePaymentMeans"),
+            Value(seller, "AccountNumber"),
+            ParseComarchLines(xml.Root),
+            vatSummaries,
+            totals);
+    }
+
+    private static IReadOnlyList<InvoiceLine> ParseComarchLines(XElement? root)
+    {
+        if (root?.Element("Invoice-Lines") is not { } lines) { return []; }
+        var parsed = new List<InvoiceLine>();
+        foreach (var item in lines.Elements("Line").Select(line => line.Element("Line-Item")).Where(item => item is not null).Cast<XElement>())
+        {
+            var description = Value(item, "ItemDescription");
+            var quantity = GetDecimal(item, "InvoiceQuantity");
+            var netAmount = GetDecimal(item, "NetAmount");
+            var vatRate = GetDecimal(item, "TaxRate");
+            var vatAmount = GetDecimal(item, "TaxAmount");
+            var grossAmount = GetDecimal(item, "GrossAmount");
+            if (description is null || quantity is null || netAmount is null || vatRate is null || vatAmount is null || grossAmount is null) { continue; }
+            parsed.Add(new InvoiceLine(description, Value(item, "UnitOfMeasure"), quantity.Value, netAmount.Value, vatRate.Value, vatAmount.Value, grossAmount.Value, []));
+        }
+
+        return parsed;
+    }
+
+    private static IReadOnlyList<VatSummary> ParseComarchVatSummaries(XElement? summary)
+    {
+        if (summary?.Element("Tax-Summary") is not { } taxSummary) { return []; }
+        var parsed = new List<VatSummary>();
+        foreach (var item in taxSummary.Elements("Tax-Summary-Line"))
+        {
+            var rate = GetDecimal(item, "TaxRate");
+            var netAmount = GetDecimal(item, "TaxableAmount");
+            var vatAmount = GetDecimal(item, "TaxAmount");
+            if (rate is null || netAmount is null || vatAmount is null) { continue; }
+            parsed.Add(new VatSummary(rate.Value, netAmount.Value, vatAmount.Value, netAmount.Value + vatAmount.Value));
+        }
+
+        return parsed;
     }
 
     private static void ApplyLegacyExtraction(InvoiceDocument document, JsonElement root, DocumentType type)
@@ -210,6 +289,10 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
             ? value
             : decimal.TryParse(node.GetString(), out value) ? value : null;
     }
+
+    private static string? Value(XElement? element, string name) => element?.Element(name)?.Value;
+
+    private static decimal? GetDecimal(XElement? element, string name) => decimal.TryParse(Value(element, name), out var value) ? value : null;
 
     private static string DescribeStage(string stage) => stage switch
     {
