@@ -33,6 +33,8 @@ cp deploy/.env.example deploy/.env
 
 Pierwszy start pobiera model PaddleOCR-VL do named volume i może potrwać kilka minut. Aplikacja nasłuchuje domyślnie tylko lokalnie na `http://127.0.0.1:8088`; użyj `WEB_PORT`, aby zmienić port.
 
+Po `./scripts/dev-up.sh` lokalnie uruchomione Web/Worker używają `http://127.0.0.1:8090` dla PaddleOCR i `http://192.168.21.14:11434` dla Ollama. Obrazy kontenerowe publikują kod ReadyToRun dla `linux-x64` lub `linux-arm64`.
+
 ## Weryfikacja
 
 ```bash

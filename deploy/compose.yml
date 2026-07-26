@@ -19,6 +19,9 @@ services:
       PADDLE_PDX_MODEL_SOURCE: bos
     volumes: [paddle-models:/root/.paddlex]
     expose: ["8080"]
+    # Umożliwia Workerowi uruchomionemu poza Dockerem korzystanie z tego samego OCR.
+    # Port pozostaje dostępny wyłącznie z hosta, nie z sieci lokalnej.
+    ports: ["127.0.0.1:${PADDLEOCR_PORT:-8090}:8080"]
     networks: [private, model-download]
   storage-init:
     image: busybox:1.37.0

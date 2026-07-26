@@ -239,6 +239,8 @@ OLLAMA_MODEL=gpt-oss:20b
 OLLAMA_TIMEOUT_SECONDS=180
 ```
 
+- [x] Profil `Development` wskazuje istniejącą usługę `http://192.168.21.14:11434` z modelem `gpt-oss:20b`; wariant Compose nadal pobiera adres wyłącznie z `OLLAMA_BASE_URL` w `deploy/.env`.
+
 - [ ] Jeśli Ollama działa na hoście Linux poza compose, użyj `host.docker.internal` + `extra_hosts: host-gateway`; jeśli w innej sieci Docker, dołącz Web/Worker do zewnętrznej sieci. Nie publikuj Ollama do Internetu.
 - [x] `scripts/check-ollama.sh`:
 
@@ -362,6 +364,8 @@ scripts/pin-paddle-images.sh
 ```
 
 - [ ] `deploy/compose.yml` ma zawierać: `postgres`, `invoice-web`, `invoice-worker`, `paddleocr-vl-api`; **bez Ollama**. Użyj healthchecks, read-only filesystem gdzie możliwe, non-root dla .NET, limits, named volumes i prywatnej sieci.
+- [x] PaddleOCR jest dostępny dla procesu uruchomionego na hoście wyłącznie przez `127.0.0.1:${PADDLEOCR_PORT:-8090}`; kontenery nadal używają prywatnego DNS `paddleocr-vl-api:8080`.
+- [x] Obrazy Web i Workera publikują kod ReadyToRun per architektura (`linux-x64`/`linux-arm64`), bez trimming. Native AOT nie jest zgodny z użytym Blazor Interactive Server.
 - [ ] Minimalny układ:
 
 ```yaml
