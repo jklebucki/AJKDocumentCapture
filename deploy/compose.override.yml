@@ -1,0 +1,4 @@
+services:
+  invoice-web:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development

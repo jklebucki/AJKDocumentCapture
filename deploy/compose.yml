@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:17.5-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [invoice-db:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [private]
+  paddleocr-vl-api:
+    build: ./paddleocr-cpu
+    environment:
+      PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True"
+      PADDLE_PDX_MODEL_SOURCE: bos
+    volumes: [paddle-models:/root/.paddlex]
+    expose: ["8080"]
+    networks: [private, model-download]
+  storage-init:
+    image: busybox:1.37.0
+    user: "0"
+    command: ["sh", "-c", "mkdir -p /data && chown -R 1654:1654 /data"]
+    volumes: [invoice-data:/data]
+    networks: [private]
+  invoice-web:
+    build:
+      context: ..
+      dockerfile: src/InvoiceCapture.Web/Dockerfile
+    environment:
+      ConnectionStrings__Main: ${DB_CONNECTION}
+      Storage__Root: /data
+      Ollama__BaseUrl: ${OLLAMA_BASE_URL}
+      Ollama__Model: ${OLLAMA_MODEL}
+    volumes: [invoice-data:/data]
+    depends_on:
+      postgres: { condition: service_healthy }
+      storage-init: { condition: service_completed_successfully }
+    ports: ["${WEB_BIND}:${WEB_PORT}:8080"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    networks: [private]
+  invoice-worker:
+    build:
+      context: ..
+      dockerfile: src/InvoiceCapture.Worker/Dockerfile
+    environment:
+      ConnectionStrings__Main: ${DB_CONNECTION}
+      Storage__Root: /data
+      PaddleOcr__BaseUrl: http://paddleocr-vl-api:8080
+      Ollama__BaseUrl: ${OLLAMA_BASE_URL}
+      Ollama__Model: ${OLLAMA_MODEL}
+    volumes: [invoice-data:/data]
+    depends_on:
+      postgres: { condition: service_healthy }
+      storage-init: { condition: service_completed_successfully }
+      paddleocr-vl-api:
+        condition: service_started
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    networks: [private, model-download]
+volumes:
+  invoice-db:
+  invoice-data:
+  paddle-models:
+networks:
+  private:
+    internal: true
+  model-download:

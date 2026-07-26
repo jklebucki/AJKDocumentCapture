@@ -1,0 +1,9 @@
+services:
+  paddleocr-vl-api:
+    profiles: [ocr-gpu]
+    image: ${PADDLE_OCR_GPU_IMAGE:?Set immutable image digest}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
