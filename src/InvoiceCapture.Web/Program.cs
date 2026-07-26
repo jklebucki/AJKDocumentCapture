@@ -1,4 +1,5 @@
 using InvoiceCapture.Application;
+using InvoiceCapture.Domain;
 using InvoiceCapture.Infrastructure;
 using InvoiceCapture.Web;
 using InvoiceCapture.Web.Components;
@@ -13,14 +14,14 @@ builder.Services.AddInvoiceInfrastructure(builder.Configuration);
 builder.Services.AddHttpClient("diagnostics", client => client.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddScoped<SystemDiagnosticsService>();
 builder.Services.AddScoped<UploadDocumentHandler>();
+builder.Services.AddScoped<LoadDocumentReviewHandler>();
 builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 25L * 1024 * 1024);
 builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+await using (var scope = app.Services.CreateAsyncScope())
 {
-    await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<InvoiceCaptureDbContext>();
     await DevelopmentDatabaseInitializer.EnsureCurrentSchemaAsync(db, CancellationToken.None);
 }
@@ -54,6 +55,14 @@ app.MapPost("/api/documents", async (IFormFile file, HttpContext context, Upload
     catch (ArgumentException exception) { return Results.Problem(statusCode: StatusCodes.Status415UnsupportedMediaType, title: exception.Message); }
     catch (InvalidOperationException exception) { return Results.Problem(statusCode: StatusCodes.Status413PayloadTooLarge, title: exception.Message); }
 }).DisableAntiforgery();
+
+app.MapGet("/api/documents/{documentId:guid}/source", async (Guid documentId, IInvoiceRepository invoices, IBlobStore blobStore, CancellationToken cancellationToken) =>
+{
+    var document = await invoices.GetAsync(new DocumentId(documentId), cancellationToken);
+    if (document is null) { return Results.NotFound(); }
+    var stream = await blobStore.OpenReadAsync(document.Source.OriginalPath, cancellationToken);
+    return Results.File(stream, document.Source.MediaType, enableRangeProcessing: true);
+});
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

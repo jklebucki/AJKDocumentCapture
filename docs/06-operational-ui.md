@@ -16,3 +16,5 @@ Kolejka jest zwartą tabelą z filtrem po nazwie pliku, statusie oraz nazwach i 
 `/diagnostics` wykonuje na żądanie kontrolę połączenia z PostgreSQL, zapisywalności storage, świeżości heartbeat Workera, zdrowia Paddle i obecności skonfigurowanego modelu Ollama. Nie pokazuje treści dokumentów ani sekretów.
 
 `/documents` ma pełnoszeroką, wirtualizowaną tabelę i restartuje wyłącznie zadania końcowe (`Failed`, `ReviewRequired`, `Ready`, `Completed`). Restart atomowo zwraca istniejące zadanie do `Queued`, czyści dane ekstrakcji widoczne na liście i nie zmienia pliku źródłowego. W całej aplikacji nagłówek oraz stopka pozostają stałe; przewijany jest wyłącznie wewnętrzny obszar treści strony.
+
+Tabela odświeża wyłącznie własne dane co 10 sekund; nie przeładowuje strony ani globalnego layoutu. Błąd providera jest opisany kodem działania (np. dostępność OCR) i umożliwia restart także wtedy, gdy dokument zatrzymał się wizualnie na poprzednim etapie.

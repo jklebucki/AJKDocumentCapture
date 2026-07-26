@@ -150,9 +150,11 @@ IClock
 - [ ] Globalny `InteractiveServer`; WebSockets; poprawny CSP; nie dodawaj osobnego klienta SPA.
 - [ ] Strony/komponenty:
   - [x] `/documents` — filtrowana, wirtualizowana kolejka (`Virtualize`);
-  - [ ] Status kolejki aktualizowany push.
+- [ ] Status kolejki aktualizowany push.
+- [x] Kolejka odświeża własne dane co 10 sekund bez przeładowania strony; elementy stanu i błędu są aktualizowane przez `Virtualize`.
   - `/documents/upload` — drag/drop, walidacja MIME/signature/size, upload streaming;
-  - `/documents/{id}` — podział: PDF/image preview + formularz danych + issues + historia;
+- `/documents/{id}` — podział: PDF/image preview + formularz danych + issues + historia;
+- [x] `/documents/{id}` — zachowane issues oraz historia przetwarzania; `/documents/{id}/review` pokazuje XML artefaktu i podgląd źródła. Eksporter ERP oraz optymalizator PDF nadal nie są zaimplementowane.
   - `/settings` — endpointy, limity, profile eksportu bez pokazywania sekretów;
   - [x] `/health`/admin diagnostics bez danych dokumentów.
 - [ ] Edycja: `EditForm`, walidacja przy zmianie pola z debounce 250–400 ms; anuluj poprzednie żądanie przez `CancellationTokenSource`.

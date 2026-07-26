@@ -1,5 +1,6 @@
 @page "/documents/{DocumentId:guid}"
 @inject IInvoiceRepository InvoiceRepository
+@inject IProcessingJobRepository ProcessingJobRepository
 
 <PageTitle>Document details</PageTitle>
 
@@ -49,16 +50,38 @@
                 </ul>
             </section>
         }
+        <section class="workspace-card detail-card issues-card" aria-labelledby="processing-log-title">
+            <h2 id="processing-log-title">Processing log</h2>
+            @if (events.Count == 0)
+            {
+                <p class="diagnostic-detail">No persisted events exist for this document yet. New processing runs record every start, stage, retry and result.</p>
+            }
+            else
+            {
+                <ol class="event-log" aria-live="polite">
+                    @foreach (var processingEvent in events)
+                    {
+                        <li @key="@(processingEvent.OccurredAt.ToUnixTimeMilliseconds().ToString() + processingEvent.Kind)">
+                            <time datetime="@processingEvent.OccurredAt.ToString("O")">@processingEvent.OccurredAt.LocalDateTime.ToString("dd MMM yyyy, HH:mm:ss")</time>
+                            <strong>@processingEvent.Kind</strong>
+                            <span>@processingEvent.Detail</span>
+                        </li>
+                    }
+                </ol>
+            }
+        </section>
     }
 </section>
 
 @code {
     [Parameter] public Guid DocumentId { get; set; }
     private InvoiceDocument? document;
+    private IReadOnlyList<ProcessingEvent> events = [];
 
     protected override async Task OnParametersSetAsync()
     {
         document = await InvoiceRepository.GetAsync(new DocumentId(DocumentId), CancellationToken.None);
+        events = await ProcessingJobRepository.ListEventsAsync(new DocumentId(DocumentId), CancellationToken.None);
     }
 
     private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;

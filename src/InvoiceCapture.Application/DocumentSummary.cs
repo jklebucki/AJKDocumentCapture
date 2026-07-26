@@ -6,6 +6,7 @@ public sealed record DocumentSummary(
     DocumentId Id,
     string FileName,
     ProcessingStatus Status,
+    ProcessingStatus? JobStatus,
     string? ProcessingStage,
     DateTimeOffset UploadedAt,
     DateTimeOffset? ProcessingStartedAt,

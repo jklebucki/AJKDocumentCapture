@@ -13,6 +13,7 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
         var document = await invoices.GetAsync(job.DocumentId, cancellationToken) ?? throw new InvalidOperationException("The job document does not exist.");
         try
         {
+            await jobs.RecordEventAsync(job.DocumentId, job.Id, "Started", job.Stage, $"Worker started {job.Stage}.", cancellationToken);
             switch (job.Stage)
             {
                 case nameof(ProcessingStatus.Queued):

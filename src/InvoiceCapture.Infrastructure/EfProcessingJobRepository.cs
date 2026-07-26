@@ -14,6 +14,7 @@ public sealed class EfProcessingJobRepository(InvoiceCaptureDbContext db) : IPro
         if (existing is not null) { return existing.Id; }
         var id = Guid.NewGuid();
         db.Jobs.Add(new JobRow { Id = id, DocumentId = documentId.Value, IdempotencyKey = idempotencyKey, NextAttemptAt = DateTimeOffset.UtcNow });
+        AddEvent(documentId, id, "Queued", ProcessingStatus.Queued.ToString(), "Document accepted and queued for processing.");
         await db.SaveChangesAsync(cancellationToken);
         return id;
     }
@@ -24,7 +25,8 @@ public sealed class EfProcessingJobRepository(InvoiceCaptureDbContext db) : IPro
         var job = await db.Jobs.SingleOrDefaultAsync(x => x.DocumentId == documentId.Value, cancellationToken);
         if (invoice is null || job is null || job.LeaseUntil >= DateTimeOffset.UtcNow ||
             !Enum.TryParse<ProcessingStatus>(invoice.Status, out var status) ||
-            !InvoiceDocument.CanRestartProcessing(status))
+            !Enum.TryParse<ProcessingStatus>(job.Status, out var jobStatus) ||
+            (jobStatus is not ProcessingStatus.Failed && !InvoiceDocument.CanRestartProcessing(status)))
         {
             return false;
         }
@@ -42,8 +44,22 @@ public sealed class EfProcessingJobRepository(InvoiceCaptureDbContext db) : IPro
         job.ProcessingStartedAt = null;
         job.NextAttemptAt = DateTimeOffset.UtcNow;
         job.ErrorCode = null;
+        AddEvent(documentId, job.Id, "Restarted", ProcessingStatus.Queued.ToString(), "Operator restarted processing from the queue.");
         await db.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    public async Task<IReadOnlyList<ProcessingEvent>> ListEventsAsync(DocumentId documentId, CancellationToken cancellationToken) =>
+        await db.Events.AsNoTracking()
+            .Where(x => x.DocumentId == documentId.Value)
+            .OrderBy(x => x.OccurredAt)
+            .Select(x => new ProcessingEvent(x.OccurredAt, x.Kind, x.Stage, x.Detail))
+            .ToListAsync(cancellationToken);
+
+    public async Task RecordEventAsync(DocumentId documentId, Guid jobId, string kind, string stage, string detail, CancellationToken cancellationToken)
+    {
+        AddEvent(documentId, jobId, kind, stage, detail);
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<ProcessingJob?> TryAcquireAsync(string workerId, TimeSpan leaseDuration, CancellationToken cancellationToken)
@@ -83,6 +99,7 @@ public sealed class EfProcessingJobRepository(InvoiceCaptureDbContext db) : IPro
         row.LeaseUntil = null;
         row.LeaseOwner = null;
         row.NextAttemptAt = DateTimeOffset.UtcNow;
+        AddEvent(new DocumentId(row.DocumentId), row.Id, "Stage completed", status.ToString(), $"Processing advanced to {status}.");
         await db.SaveChangesAsync(cancellationToken);
     }
 
@@ -94,6 +111,20 @@ public sealed class EfProcessingJobRepository(InvoiceCaptureDbContext db) : IPro
         row.LeaseOwner = null;
         row.Status = retryable && row.Attempt < 3 ? ProcessingStatus.Queued.ToString() : ProcessingStatus.Failed.ToString();
         row.NextAttemptAt = retryable ? DateTimeOffset.UtcNow.AddSeconds(Math.Pow(2, row.Attempt) + Random.Shared.NextDouble()) : null;
+        var detail = retryable && row.Attempt < 3 ? $"Temporary provider error ({errorCode}); retry scheduled." : $"Processing stopped: {errorCode}.";
+        AddEvent(new DocumentId(row.DocumentId), row.Id, retryable ? "Retry scheduled" : "Failed", row.Stage, detail);
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    private void AddEvent(DocumentId documentId, Guid jobId, string kind, string stage, string detail) =>
+        db.Events.Add(new ProcessingEventRow
+        {
+            Id = Guid.NewGuid(),
+            DocumentId = documentId.Value,
+            JobId = jobId,
+            OccurredAt = DateTimeOffset.UtcNow,
+            Kind = kind,
+            Stage = stage,
+            Detail = detail
+        });
 }

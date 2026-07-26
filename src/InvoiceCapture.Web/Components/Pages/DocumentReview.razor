@@ -1,0 +1,60 @@
+@page "/documents/{DocumentId:guid}/review"
+@inject LoadDocumentReviewHandler ReviewHandler
+
+<PageTitle>Document review</PageTitle>
+
+<section class="page-shell review-page" aria-labelledby="review-title">
+    @if (review is null)
+    {
+        <div class="workspace-card loading-state">Document not found.</div>
+    }
+    else
+    {
+        <header class="page-heading">
+            <div>
+                <p class="eyebrow">Review</p>
+                <h1 id="review-title">@review.Document.Source.OriginalFileName</h1>
+                <p class="page-description">Compare the structured extraction with the source document before continuing the workflow.</p>
+            </div>
+            <a class="button button-secondary" href="/documents/@DocumentId">Back to details</a>
+        </header>
+
+        <div class="review-grid">
+            <section class="workspace-card review-pane" aria-labelledby="xml-title">
+                <div class="review-pane-heading">
+                    <h2 id="xml-title">Review XML</h2>
+                    <span class="status-pill status-warning">Not ERP export</span>
+                </div>
+                @if (review.ExtractionXml is not null)
+                {
+                    <pre class="xml-preview"><code>@review.ExtractionXml</code></pre>
+                }
+                else
+                {
+                    <p class="inline-alert" role="alert">@review.ArtifactMessage</p>
+                }
+            </section>
+            <section class="workspace-card review-pane" aria-labelledby="pdf-title">
+                <div class="review-pane-heading">
+                    <h2 id="pdf-title">PDF preview</h2>
+                    <span class="review-caption">Source PDF; optimizer is not configured yet.</span>
+                </div>
+                @if (string.Equals(review.Document.Source.MediaType, "application/pdf", StringComparison.OrdinalIgnoreCase))
+                {
+                    <iframe class="pdf-preview" src="/api/documents/@DocumentId/source" title="Source PDF preview"></iframe>
+                }
+                else
+                {
+                    <img class="image-preview" src="/api/documents/@DocumentId/source" alt="Source document preview" />
+                }
+            </section>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public Guid DocumentId { get; set; }
+    private DocumentReviewResult? review;
+
+    protected override async Task OnParametersSetAsync() => review = await ReviewHandler.HandleAsync(new DocumentId(DocumentId), CancellationToken.None);
+}

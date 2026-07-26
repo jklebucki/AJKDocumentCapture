@@ -25,7 +25,15 @@ public sealed class EfInvoiceRepository(InvoiceCaptureDbContext db) : IInvoiceRe
     public async Task<InvoiceDocument?> GetAsync(DocumentId documentId, CancellationToken cancellationToken)
     {
         var row = await db.Invoices.AsNoTracking().SingleOrDefaultAsync(x => x.Id == documentId.Value, cancellationToken);
-        return row is null ? null : Rehydrate(row);
+        if (row is null) { return null; }
+        var document = Rehydrate(row);
+        var issues = await db.ValidationIssues.AsNoTracking()
+            .Where(x => x.DocumentId == documentId.Value)
+            .OrderBy(x => x.Code)
+            .Select(x => new ValidationIssue(x.Code, Enum.Parse<ValidationSeverity>(x.Severity), x.Field, x.Message))
+            .ToListAsync(cancellationToken);
+        document.SetValidationIssues(issues);
+        return document;
     }
 
     public Task<int> CountAsync(string? searchTerm, CancellationToken cancellationToken) =>
@@ -44,6 +52,7 @@ public sealed class EfInvoiceRepository(InvoiceCaptureDbContext db) : IInvoiceRe
                 invoice.Id,
                 invoice.OriginalFileName,
                 invoice.Status,
+                JobStatus = job == null ? null : job.Status,
                 ProcessingStage = job == null ? null : job.Stage,
                 invoice.CreatedAt,
                 ProcessingStartedAt = job == null ? null : job.ProcessingStartedAt,
@@ -61,6 +70,7 @@ public sealed class EfInvoiceRepository(InvoiceCaptureDbContext db) : IInvoiceRe
             new DocumentId(x.Id),
             x.OriginalFileName,
             Enum.Parse<ProcessingStatus>(x.Status),
+            x.JobStatus is null ? null : Enum.Parse<ProcessingStatus>(x.JobStatus),
             x.ProcessingStage,
             x.CreatedAt,
             x.ProcessingStartedAt,
@@ -79,6 +89,17 @@ public sealed class EfInvoiceRepository(InvoiceCaptureDbContext db) : IInvoiceRe
         row.BuyerName = document.Buyer?.Name;
         row.SellerNip = document.Seller?.Nip;
         row.SellerName = document.Seller?.Name;
+        var existingIssues = db.ValidationIssues.Where(x => x.DocumentId == document.Id.Value);
+        db.ValidationIssues.RemoveRange(existingIssues);
+        db.ValidationIssues.AddRange(document.Issues.Select(issue => new ValidationIssueRow
+        {
+            Id = Guid.NewGuid(),
+            DocumentId = document.Id.Value,
+            Code = issue.Code,
+            Severity = issue.Severity.ToString(),
+            Field = issue.Field,
+            Message = issue.Message
+        }));
         await db.SaveChangesAsync(cancellationToken);
     }
 

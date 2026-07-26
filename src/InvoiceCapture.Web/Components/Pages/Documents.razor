@@ -27,6 +27,7 @@
                 <button class="button button-quiet" type="button" @onclick="ClearSearchAsync">Clear</button>
             }
             <button class="button button-secondary" type="button" @onclick="RefreshAsync">Refresh</button>
+            <span class="refresh-status" aria-live="polite">Auto-refreshes every 10 seconds</span>
         </div>
 
         @if (actionMessage is not null)
@@ -72,7 +73,7 @@
                                 }
                                 @if (!string.IsNullOrWhiteSpace(document.ErrorCode))
                                 {
-                                    <span class="error-label">Action needed</span>
+                                    <span class="error-label">@FormatError(document.ErrorCode)</span>
                                 }
                             </td>
                             <td data-label="Buyer NIP"><code>@Display(document.BuyerNip)</code></td>
@@ -80,9 +81,13 @@
                             <td data-label="Seller NIP"><code>@Display(document.SellerNip)</code></td>
                             <td data-label="Seller">@Display(document.SellerName)</td>
                             <td data-label="Actions" class="action-cell">
-                                @if (InvoiceDocument.CanRestartProcessing(document.Status))
+                                <a class="icon-button" href="/documents/@document.Id/review" aria-label="Open review and output preview for @document.FileName" data-tooltip="Open review and output preview">
+                                    <img src="icons/bootstrap-icons-1.13.1/eye.svg" alt="" aria-hidden="true" />
+                                </a>
+                                @if (CanRestart(document))
                                 {
                                     <button class="button button-secondary button-small" type="button" @onclick="() => RestartAsync(document)" disabled="@(restartingDocumentId == document.Id.Value)">
+                                        <img class="button-icon" src="icons/bootstrap-icons-1.13.1/arrow-clockwise.svg" alt="" aria-hidden="true" />
                                         @(restartingDocumentId == document.Id.Value ? "Restarting…" : "Restart")
                                     </button>
                                 }
@@ -107,6 +112,10 @@
     private string? actionMessage;
     private bool actionFailed;
     private Guid? restartingDocumentId;
+    private readonly CancellationTokenSource refreshCancellation = new();
+    private Task? refreshLoop;
+
+    protected override void OnInitialized() => refreshLoop = RefreshLoopAsync(refreshCancellation.Token);
 
     private async ValueTask<ItemsProviderResult<DocumentSummary>> LoadDocuments(ItemsProviderRequest request)
     {
@@ -155,7 +164,7 @@
 
     private async Task RestartAsync(DocumentSummary document)
     {
-        if (!InvoiceDocument.CanRestartProcessing(document.Status)) { return; }
+        if (!CanRestart(document)) { return; }
 
         restartingDocumentId = document.Id.Value;
         actionMessage = null;
@@ -188,11 +197,38 @@
     private static string FormatDateTime(DateTimeOffset? value) => value?.LocalDateTime.ToString("dd MMM, HH:mm") ?? "—";
     private static string FormatStage(string stage) => System.Text.RegularExpressions.Regex.Replace(stage, "([a-z])([A-Z])", "$1 $2");
     private static string FormatStatus(ProcessingStatus status) => FormatStage(status.ToString());
+    private static bool CanRestart(DocumentSummary document) => document.JobStatus is ProcessingStatus.Failed || InvoiceDocument.CanRestartProcessing(document.Status);
+    private static string FormatError(string errorCode) => errorCode switch
+    {
+        "provider_unavailable" => "OCR service unavailable — restart after diagnostics pass",
+        "provider_timeout" => "Provider timeout — restart available",
+        "provider_rejected_request" => "Provider rejected request — review diagnostics",
+        _ => $"Processing error: {FormatStage(errorCode)}"
+    };
 
-    public ValueTask DisposeAsync()
+    private async Task RefreshLoopAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(async () =>
+                {
+                    await RefreshAsync();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+    }
+
+    public async ValueTask DisposeAsync()
     {
         searchCancellation?.Cancel();
         searchCancellation?.Dispose();
-        return ValueTask.CompletedTask;
+        refreshCancellation.Cancel();
+        if (refreshLoop is not null) { await refreshLoop; }
+        refreshCancellation.Dispose();
     }
 }

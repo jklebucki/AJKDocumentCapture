@@ -6,6 +6,8 @@ public sealed class InvoiceCaptureDbContext(DbContextOptions<InvoiceCaptureDbCon
 {
     internal DbSet<InvoiceRow> Invoices => Set<InvoiceRow>();
     internal DbSet<JobRow> Jobs => Set<JobRow>();
+    internal DbSet<ProcessingEventRow> Events => Set<ProcessingEventRow>();
+    internal DbSet<ValidationIssueRow> ValidationIssues => Set<ValidationIssueRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,5 +38,22 @@ public sealed class InvoiceCaptureDbContext(DbContextOptions<InvoiceCaptureDbCon
         jobs.Property(x => x.Version).IsRowVersion();
         jobs.HasIndex(x => x.IdempotencyKey).IsUnique();
         jobs.HasIndex(x => new { x.Status, x.NextAttemptAt });
+
+        var events = modelBuilder.Entity<ProcessingEventRow>();
+        events.ToTable("processing_events");
+        events.HasKey(x => x.Id);
+        events.Property(x => x.Kind).HasMaxLength(64);
+        events.Property(x => x.Stage).HasMaxLength(64);
+        events.Property(x => x.Detail).HasMaxLength(512);
+        events.HasIndex(x => new { x.DocumentId, x.OccurredAt });
+
+        var issues = modelBuilder.Entity<ValidationIssueRow>();
+        issues.ToTable("validation_issues");
+        issues.HasKey(x => x.Id);
+        issues.Property(x => x.Code).HasMaxLength(128);
+        issues.Property(x => x.Severity).HasMaxLength(32);
+        issues.Property(x => x.Field).HasMaxLength(128);
+        issues.Property(x => x.Message).HasMaxLength(512);
+        issues.HasIndex(x => x.DocumentId);
     }
 }
