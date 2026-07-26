@@ -6,3 +6,4 @@ obj/
 data/
 TestResults/
 *.user
+.DS_Store
