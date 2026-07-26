@@ -181,6 +181,10 @@ IClock
 /data/{documentId}/output/document.xml
 ```
 
+- [x] Zapisuj surową, kanoniczną odpowiedź Ollama jako `artifacts/extraction.json`; dostęp do niej w historii przetwarzania jest możliwy z przycisku ikonowego.
+- [x] Kontrakt ekstrakcji zawiera bazowy profil `comarch-ecod-ksef-7.77`: nagłówek, strony, pozycje, podsumowanie i VAT; brak danych jest `null`, bez zgadywania.
+- [ ] Produkcyjny eksport XML Comarch: wymaga zatwierdzonego XSD oraz testowych komunikatów zaakceptowanych przez docelowy ERP. Podgląd review realizuje obecnie wyłącznie preflight profilu bazowego.
+
 - [ ] Nie używaj nazwy przesłanej przez użytkownika jako ścieżki. Generuj UUID; nazwę przechowuj tylko jako metadane.
 - [ ] `IBlobStore` przygotuj pod późniejsze S3/MinIO, ale nie wdrażaj drugiego backendu w MVP.
 - [ ] Oryginału nigdy nie nadpisuj. Work dir usuń po sukcesie/błędzie zgodnie z retention.

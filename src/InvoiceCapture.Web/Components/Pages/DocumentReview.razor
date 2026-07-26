@@ -14,7 +14,7 @@
             <div>
                 <p class="eyebrow">Review</p>
                 <h1 id="review-title">@review.Document.Source.OriginalFileName</h1>
-                <p class="page-description">Compare the structured extraction with the source document before continuing the workflow.</p>
+                <p class="page-description">Compare the ECOD/KSeF structured extraction with the source document before continuing the workflow.</p>
             </div>
             <a class="button button-secondary" href="/documents/@DocumentId">Back to details</a>
         </header>
@@ -22,8 +22,8 @@
         <div class="review-grid">
             <section class="workspace-card review-pane" aria-labelledby="xml-title">
                 <div class="review-pane-heading">
-                    <h2 id="xml-title">Review XML</h2>
-                    <span class="status-pill status-warning">Not ERP export</span>
+                    <h2 id="xml-title">Comarch ECOD/KSeF XML</h2>
+                    <span class="status-pill status-warning">Base profile · XSD pending</span>
                 </div>
                 @if (review.ExtractionXml is not null)
                 {

@@ -1,6 +1,4 @@
 using System.Text.Json;
-using System.Xml;
-using System.Xml.Linq;
 using InvoiceCapture.Domain;
 
 namespace InvoiceCapture.Application;
@@ -18,7 +16,8 @@ public sealed class LoadDocumentReviewHandler(IInvoiceRepository invoices, IBlob
             using var reader = new StreamReader(stream);
             var json = await reader.ReadToEndAsync(cancellationToken);
             using var parsed = JsonDocument.Parse(json);
-            return new DocumentReviewResult(document, new XDocument(ToElement(parsed.RootElement, "extraction")).ToString(), null);
+            var preview = ComarchEcodKsefXmlPreviewRenderer.Render(parsed.RootElement);
+            return new DocumentReviewResult(document, preview.Xml, preview.Message);
         }
         catch (FileNotFoundException)
         {
@@ -34,11 +33,4 @@ public sealed class LoadDocumentReviewHandler(IInvoiceRepository invoices, IBlob
         }
     }
 
-    private static XElement ToElement(JsonElement element, string name) => element.ValueKind switch
-    {
-        JsonValueKind.Object => new XElement(name, element.EnumerateObject().Select(property => ToElement(property.Value, XmlConvert.EncodeLocalName(property.Name)))),
-        JsonValueKind.Array => new XElement(name, element.EnumerateArray().Select(item => ToElement(item, "item"))),
-        JsonValueKind.Null => new XElement(name),
-        _ => new XElement(name, element.ToString())
-    };
 }

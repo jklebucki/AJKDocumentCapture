@@ -83,15 +83,100 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
         using var json = await JsonDocument.ParseAsync(extractionStream, cancellationToken: cancellationToken);
         var root = json.RootElement;
         var type = root.TryGetProperty("documentType", out var typeNode) && Enum.TryParse<DocumentType>(typeNode.GetString(), true, out var parsedType) ? parsedType : DocumentType.Unknown;
-        var number = GetString(root, "invoiceNumber");
-        var sellerNip = GetString(root, "sellerNip");
-        var sellerName = GetString(root, "sellerName");
-        var buyerNip = GetString(root, "buyerNip");
-        var buyerName = GetString(root, "buyerName");
-        DateOnly? date = DateOnly.TryParse(GetString(root, "issueDate"), out var parsedDate) ? parsedDate : null;
-        var currency = GetString(root, "currency") ?? "PLN";
-        document.ApplyExtraction(type, new InvoiceParty(sellerName, sellerNip, null), new InvoiceParty(buyerName, buyerNip, null), number, date, null, currency, null, null, [], [], null);
+        if (!root.TryGetProperty("comarchEcodKsef", out var comarch) || comarch.ValueKind != JsonValueKind.Object)
+        {
+            ApplyLegacyExtraction(document, root, type);
+            document.SetValidationIssues(validator.Validate(document));
+            return;
+        }
+
+        var header = GetObject(comarch, "header");
+        var seller = GetObject(comarch, "seller");
+        var buyer = GetObject(comarch, "buyer");
+        var summary = GetObject(comarch, "summary");
+        DateOnly? date = DateOnly.TryParse(GetString(header, "invoiceDate"), out var parsedDate) ? parsedDate : null;
+        DateOnly? dueDate = DateOnly.TryParse(GetString(header, "invoicePaymentDueDate"), out var parsedDueDate) ? parsedDueDate : null;
+        var lines = ParseLines(comarch);
+        var vatSummaries = ParseVatSummaries(summary);
+        var totals = ParseTotals(summary);
+        document.ApplyExtraction(
+            type,
+            new InvoiceParty(GetString(seller, "name"), GetString(seller, "taxId"), GetString(seller, "streetAndNumber")),
+            new InvoiceParty(GetString(buyer, "name"), GetString(buyer, "taxId"), GetString(buyer, "streetAndNumber")),
+            GetString(header, "invoiceNumber"),
+            date,
+            dueDate,
+            GetString(header, "invoiceCurrency") ?? "PLN",
+            GetString(header, "invoicePaymentMeans"),
+            GetString(seller, "accountNumber"),
+            lines,
+            vatSummaries,
+            totals);
         document.SetValidationIssues(validator.Validate(document));
+    }
+
+    private static void ApplyLegacyExtraction(InvoiceDocument document, JsonElement root, DocumentType type)
+    {
+        DateOnly? date = DateOnly.TryParse(GetString(root, "issueDate"), out var parsedDate) ? parsedDate : null;
+        document.ApplyExtraction(
+            type,
+            new InvoiceParty(GetString(root, "sellerName"), GetString(root, "sellerNip"), null),
+            new InvoiceParty(GetString(root, "buyerName"), GetString(root, "buyerNip"), null),
+            GetString(root, "invoiceNumber"),
+            date,
+            null,
+            GetString(root, "currency") ?? "PLN",
+            null,
+            null,
+            [],
+            [],
+            null);
+    }
+
+    private static IReadOnlyList<InvoiceLine> ParseLines(JsonElement comarch)
+    {
+        if (!comarch.TryGetProperty("lines", out var lines) || lines.ValueKind != JsonValueKind.Array) { return []; }
+        var parsed = new List<InvoiceLine>();
+        foreach (var line in lines.EnumerateArray())
+        {
+            var description = GetString(line, "itemDescription");
+            var quantity = GetDecimal(line, "invoiceQuantity");
+            var netAmount = GetDecimal(line, "netAmount");
+            var vatRate = GetDecimal(line, "taxRate");
+            var vatAmount = GetDecimal(line, "taxAmount");
+            var grossAmount = GetDecimal(line, "grossAmount");
+            if (description is null || quantity is null || netAmount is null || vatRate is null || vatAmount is null || grossAmount is null) { continue; }
+            parsed.Add(new InvoiceLine(description, GetString(line, "unitOfMeasure"), quantity.Value, netAmount.Value, vatRate.Value, vatAmount.Value, grossAmount.Value, []));
+        }
+
+        return parsed;
+    }
+
+    private static IReadOnlyList<VatSummary> ParseVatSummaries(JsonElement summary)
+    {
+        if (!summary.TryGetProperty("taxSummary", out var taxSummary) || taxSummary.ValueKind != JsonValueKind.Array) { return []; }
+        var parsed = new List<VatSummary>();
+        foreach (var item in taxSummary.EnumerateArray())
+        {
+            var rate = GetDecimal(item, "taxRate");
+            var netAmount = GetDecimal(item, "taxableAmount");
+            var vatAmount = GetDecimal(item, "taxAmount");
+            var grossAmount = GetDecimal(item, "grossAmount");
+            if (rate is null || netAmount is null || vatAmount is null || grossAmount is null) { continue; }
+            parsed.Add(new VatSummary(rate.Value, netAmount.Value, vatAmount.Value, grossAmount.Value));
+        }
+
+        return parsed;
+    }
+
+    private static InvoiceTotals? ParseTotals(JsonElement summary)
+    {
+        var netAmount = GetDecimal(summary, "totalNetAmount");
+        var vatAmount = GetDecimal(summary, "totalTaxAmount");
+        var grossAmount = GetDecimal(summary, "totalGrossAmount");
+        return netAmount is not null && vatAmount is not null && grossAmount is not null
+            ? new InvoiceTotals(netAmount.Value, vatAmount.Value, grossAmount.Value)
+            : null;
     }
 
     private async Task PersistAsync(ProcessingJob job, InvoiceDocument document, ProcessingStatus stage, CancellationToken cancellationToken)
@@ -114,7 +199,17 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
         }
     }
 
-    private static string? GetString(JsonElement element, string propertyName) => element.TryGetProperty(propertyName, out var node) && node.ValueKind != JsonValueKind.Null ? node.GetString() : null;
+    private static JsonElement GetObject(JsonElement element, string propertyName) => element.TryGetProperty(propertyName, out var node) && node.ValueKind == JsonValueKind.Object ? node : default;
+
+    private static string? GetString(JsonElement element, string propertyName) => element.ValueKind == JsonValueKind.Object && element.TryGetProperty(propertyName, out var node) && node.ValueKind != JsonValueKind.Null ? node.GetString() : null;
+
+    private static decimal? GetDecimal(JsonElement element, string propertyName)
+    {
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(propertyName, out var node) || node.ValueKind == JsonValueKind.Null) { return null; }
+        return node.ValueKind == JsonValueKind.Number && node.TryGetDecimal(out var value)
+            ? value
+            : decimal.TryParse(node.GetString(), out value) ? value : null;
+    }
 
     private static string DescribeStage(string stage) => stage switch
     {

@@ -5,7 +5,7 @@ flowchart LR
   S["source/original"] --> P["PaddleOcrClient"]
   P --> O["artifacts/ocr.json"]
   O --> L["OllamaExtractionClient"]
-  L --> E["artifacts/extraction.json"]
+  L --> E["artifacts/extraction.json\ncomarchEcodKsef profile"]
   E --> V["InvoiceValidator"]
   V --> R["Ready / ReviewRequired"]
 ```
