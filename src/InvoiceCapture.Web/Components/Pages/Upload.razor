@@ -4,10 +4,20 @@
 
 <PageTitle>Upload document</PageTitle>
 
-<h1>Upload document</h1>
-<p>PDF, JPEG, PNG or TIFF; maximum 25 MiB.</p>
-<InputFile OnChange="UploadAsync" accept="application/pdf,image/jpeg,image/png,image/tiff" aria-label="Select a document to upload" />
-<p aria-live="polite">@message</p>
+<section class="page-shell" aria-labelledby="upload-title">
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Operations</p>
+            <h1 id="upload-title">Upload document</h1>
+            <p class="page-description">PDF, JPEG, PNG or TIFF; maximum 25 MiB.</p>
+        </div>
+        <a class="button button-secondary" href="/documents">Back to queue</a>
+    </header>
+    <section class="workspace-card detail-card">
+        <InputFile OnChange="UploadAsync" accept="application/pdf,image/jpeg,image/png,image/tiff" aria-label="Select a document" />
+        <p aria-live="polite">@message</p>
+    </section>
+</section>
 
 @code {
     private string message = string.Empty;

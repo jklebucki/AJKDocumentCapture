@@ -66,6 +66,32 @@ public sealed class InvoiceDocument
 
     public void SetValidationIssues(IReadOnlyList<ValidationIssue> issues) => Issues = issues;
 
+    public static bool CanRestartProcessing(ProcessingStatus status) => status is ProcessingStatus.Failed or ProcessingStatus.ReviewRequired or ProcessingStatus.Ready or ProcessingStatus.Completed;
+
+    public void RestartProcessing()
+    {
+        if (!CanRestartProcessing(Status))
+        {
+            throw new InvalidOperationException("Only a completed, review-required, ready, or failed document can be restarted.");
+        }
+
+        Status = ProcessingStatus.Queued;
+        Type = DocumentType.Unknown;
+        Seller = null;
+        Buyer = null;
+        InvoiceNumber = null;
+        IssueDate = null;
+        DueDate = null;
+        Currency = "PLN";
+        PaymentMethod = null;
+        BankAccount = null;
+        Lines = [];
+        VatSummaries = [];
+        Totals = null;
+        Issues = [];
+        DataVersion++;
+    }
+
     public bool MoveTo(ProcessingStatus next)
     {
         if (!Transitions.TryGetValue(Status, out var allowed) || !allowed.Contains(next))

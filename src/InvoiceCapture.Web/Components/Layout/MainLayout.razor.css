@@ -12,23 +12,6 @@
     z-index: 1000;
 }
 
-.app-header {
-    border-bottom: 1px solid #e4e7ec;
-    padding: .75rem clamp(1rem, 4vw, 4rem);
-}
-
-.app-logo {
-    display: block;
-    height: 42px;
-    width: auto;
-}
-
-main {
-    margin: 0 auto;
-    max-width: 72rem;
-    padding: 2rem 1rem;
-}
-
     #blazor-error-ui .dismiss {
         cursor: pointer;
         position: absolute;

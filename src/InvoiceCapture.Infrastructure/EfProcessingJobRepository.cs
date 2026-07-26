@@ -18,6 +18,34 @@ public sealed class EfProcessingJobRepository(InvoiceCaptureDbContext db) : IPro
         return id;
     }
 
+    public async Task<bool> RestartAsync(DocumentId documentId, CancellationToken cancellationToken)
+    {
+        var invoice = await db.Invoices.SingleOrDefaultAsync(x => x.Id == documentId.Value, cancellationToken);
+        var job = await db.Jobs.SingleOrDefaultAsync(x => x.DocumentId == documentId.Value, cancellationToken);
+        if (invoice is null || job is null || job.LeaseUntil >= DateTimeOffset.UtcNow ||
+            !Enum.TryParse<ProcessingStatus>(invoice.Status, out var status) ||
+            !InvoiceDocument.CanRestartProcessing(status))
+        {
+            return false;
+        }
+
+        invoice.Status = ProcessingStatus.Queued.ToString();
+        invoice.BuyerNip = null;
+        invoice.BuyerName = null;
+        invoice.SellerNip = null;
+        invoice.SellerName = null;
+        job.Status = ProcessingStatus.Queued.ToString();
+        job.Stage = ProcessingStatus.Queued.ToString();
+        job.Attempt = 0;
+        job.LeaseOwner = null;
+        job.LeaseUntil = null;
+        job.ProcessingStartedAt = null;
+        job.NextAttemptAt = DateTimeOffset.UtcNow;
+        job.ErrorCode = null;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public async Task<ProcessingJob?> TryAcquireAsync(string workerId, TimeSpan leaseDuration, CancellationToken cancellationToken)
     {
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();

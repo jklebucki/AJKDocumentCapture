@@ -491,6 +491,7 @@ dotnet format --verify-no-changes && dotnet build -c Release && dotnet test -c R
 - [ ] Upload nie blokuje circuit/UI; po przyjęciu zwraca `documentId/jobId`.
 - [ ] Status i wynik pojawiają się w widocznych komponentach bez przeładowania strony.
 - [ ] Restart Web/Workera nie traci kolejki ani artefaktów; lease odzyskuje zadanie.
+- [x] Operator może z listy kolejki ponownie uruchomić zakończone zadanie bez tworzenia duplikatu dokumentu; aktywnego lease nie można zrestartować.
 - [x] Obraz jest interpretowany raz przez PaddleOCR‑VL; gpt-oss przetwarza wyłącznie tekstowy/strukturalny wynik.
 - [ ] LLM output zawsze przechodzi JSON Schema i walidację C#; brakujące dane nie są wymyślane.
 - [ ] XML pochodzi z C# i przechodzi XSD zatwierdzonego profilu.

@@ -1,6 +1,7 @@
 @page "/documents"
 @implements IAsyncDisposable
 @inject IInvoiceRepository InvoiceRepository
+@inject IProcessingJobRepository ProcessingJobRepository
 
 <PageTitle>Document queue</PageTitle>
 
@@ -28,6 +29,11 @@
             <button class="button button-secondary" type="button" @onclick="RefreshAsync">Refresh</button>
         </div>
 
+        @if (actionMessage is not null)
+        {
+            <p class="@(actionFailed ? "inline-alert" : "inline-success")" role="status">@actionMessage</p>
+        }
+
         @if (loadError is not null)
         {
             <p class="inline-alert" role="alert">The queue could not be loaded. Try refreshing.</p>
@@ -45,6 +51,7 @@
                         <th scope="col">Buyer</th>
                         <th scope="col">Seller NIP</th>
                         <th scope="col">Seller</th>
+                        <th scope="col" class="actions-heading"><span class="sr-only">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -72,6 +79,18 @@
                             <td data-label="Buyer">@Display(document.BuyerName)</td>
                             <td data-label="Seller NIP"><code>@Display(document.SellerNip)</code></td>
                             <td data-label="Seller">@Display(document.SellerName)</td>
+                            <td data-label="Actions" class="action-cell">
+                                @if (InvoiceDocument.CanRestartProcessing(document.Status))
+                                {
+                                    <button class="button button-secondary button-small" type="button" @onclick="() => RestartAsync(document)" disabled="@(restartingDocumentId == document.Id.Value)">
+                                        @(restartingDocumentId == document.Id.Value ? "Restarting…" : "Restart")
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="action-unavailable">In progress</span>
+                                }
+                            </td>
                         </tr>
                     </Virtualize>
                 </tbody>
@@ -85,6 +104,9 @@
     private CancellationTokenSource? searchCancellation;
     private string searchTerm = string.Empty;
     private string? loadError;
+    private string? actionMessage;
+    private bool actionFailed;
+    private Guid? restartingDocumentId;
 
     private async ValueTask<ItemsProviderResult<DocumentSummary>> LoadDocuments(ItemsProviderRequest request)
     {
@@ -129,6 +151,37 @@
     private async Task RefreshAsync()
     {
         if (documentTable is not null) { await documentTable.RefreshDataAsync(); }
+    }
+
+    private async Task RestartAsync(DocumentSummary document)
+    {
+        if (!InvoiceDocument.CanRestartProcessing(document.Status)) { return; }
+
+        restartingDocumentId = document.Id.Value;
+        actionMessage = null;
+        actionFailed = false;
+        try
+        {
+            if (await ProcessingJobRepository.RestartAsync(document.Id, CancellationToken.None))
+            {
+                actionMessage = $"{document.FileName} was returned to the queue.";
+                await RefreshAsync();
+            }
+            else
+            {
+                actionFailed = true;
+                actionMessage = "The task could not be restarted because its state changed. Refresh the queue and try again.";
+            }
+        }
+        catch (Exception)
+        {
+            actionFailed = true;
+            actionMessage = "The task could not be restarted. Try again.";
+        }
+        finally
+        {
+            restartingDocumentId = null;
+        }
     }
 
     private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;

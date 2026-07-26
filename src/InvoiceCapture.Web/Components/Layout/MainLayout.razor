@@ -1,20 +1,29 @@
 ﻿@inherits LayoutComponentBase
 
-<header class="app-header">
-    <div class="header-content">
-        <a href="/documents" aria-label="Invoice Capture — document queue">
-            <img src="logo.svg" alt="Invoice Capture" class="app-logo" />
-        </a>
-        <nav aria-label="Primary navigation">
-            <a href="/documents">Queue</a>
-            <a href="/diagnostics">Diagnostics</a>
-        </nav>
-    </div>
-</header>
+<div class="app-shell">
+    <header class="app-header">
+        <div class="header-content">
+            <a href="/documents" aria-label="Invoice Capture — document queue">
+                <img src="logo.svg" alt="Invoice Capture" class="app-logo" />
+            </a>
+            <nav aria-label="Primary navigation">
+                <a href="/documents">Queue</a>
+                <a href="/diagnostics">Diagnostics</a>
+            </nav>
+        </div>
+    </header>
 
-<main>
-    @Body
-</main>
+    <main class="app-content" id="main-content" tabindex="-1">
+        @Body
+    </main>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <span>Invoice Capture</span>
+            <span>Internal document operations</span>
+        </div>
+    </footer>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

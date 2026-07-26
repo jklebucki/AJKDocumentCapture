@@ -13,3 +13,4 @@
 - Treat every operational screen as an internal business-product interface: compact information hierarchy, semantic tables/forms, keyboard-first navigation, visible focus, responsive layout and explicit empty/loading/error states.
 - Use a restrained visual system (clear typography, generous whitespace, status color plus text, no decorative clutter); preserve accessibility with AA contrast, labels, `aria-live` for async feedback and controls that work without a pointer.
 - For data-dense views, filter and sort at the server boundary, retain stable row identity and expose a manual refresh/test action when live push is unavailable.
+- All application pages use the shared shell: fixed header and footer, with only the inner `main.app-content` scrolling. Keep page content in a padded `page-shell`; data queues may use the full available width while preserving responsive edge spacing.
