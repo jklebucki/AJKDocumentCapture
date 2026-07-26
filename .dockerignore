@@ -1,0 +1,7 @@
+.git/
+**/bin/
+**/obj/
+TestResults/
+data/
+deploy/.env
+deploy/.env.lock

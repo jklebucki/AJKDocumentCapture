@@ -1,0 +1,7 @@
+{
+  "editor.formatOnSave": true,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "dotnet.analyzers.enabled": true,
+  "github.copilot.chat.secretProtection.enabled": true
+}

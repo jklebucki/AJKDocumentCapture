@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/InvoiceCapture.Application/InvoiceCapture.Application.csproj" />
+    <Project Path="src/InvoiceCapture.Contracts/InvoiceCapture.Contracts.csproj" />
+    <Project Path="src/InvoiceCapture.Domain/InvoiceCapture.Domain.csproj" />
+    <Project Path="src/InvoiceCapture.Infrastructure/InvoiceCapture.Infrastructure.csproj" />
+    <Project Path="src/InvoiceCapture.Web/InvoiceCapture.Web.csproj" />
+    <Project Path="src/InvoiceCapture.Worker/InvoiceCapture.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/InvoiceCapture.ArchitectureTests/InvoiceCapture.ArchitectureTests.csproj" />
+    <Project Path="tests/InvoiceCapture.IntegrationTests/InvoiceCapture.IntegrationTests.csproj" />
+    <Project Path="tests/InvoiceCapture.UnitTests/InvoiceCapture.UnitTests.csproj" />
+  </Folder>
+</Solution>

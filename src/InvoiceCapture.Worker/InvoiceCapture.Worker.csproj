@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-InvoiceCapture.Worker-45e5ecf7-a329-4667-8afc-462b70eae371</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InvoiceCapture.Application\InvoiceCapture.Application.csproj" />
+    <ProjectReference Include="..\InvoiceCapture.Infrastructure\InvoiceCapture.Infrastructure.csproj" />
+    <ProjectReference Include="..\InvoiceCapture.Contracts\InvoiceCapture.Contracts.csproj" />
+  </ItemGroup>
+</Project>
