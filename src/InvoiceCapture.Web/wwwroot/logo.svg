@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" role="img" aria-labelledby="title">
+  <title id="title">Invoice Capture</title>
+  <defs>
+    <linearGradient id="g" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#0ea5a4"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#g)"/>
+  <path d="M21 14h17l8 8v25a4 4 0 0 1-4 4H21a4 4 0 0 1-4-4V18a4 4 0 0 1 4-4Z" fill="#fff" fill-opacity=".97"/>
+  <path d="M38 14v9h8" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M24 32h15M24 39h15M24 46h9" stroke="#0f766e" stroke-width="3" stroke-linecap="round"/>
+  <path d="m42 42 2 2 5-6" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="78" y="31" fill="#172033" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="24" font-weight="750">Invoice</text>
+  <text x="78" y="52" fill="#667085" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="17" font-weight="500" letter-spacing=".7">CAPTURE</text>
+</svg>

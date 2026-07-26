@@ -1,0 +1,23 @@
+@page "/documents"
+@inject IInvoiceRepository InvoiceRepository
+
+<PageTitle>Documents</PageTitle>
+
+<h1>Documents</h1>
+<p><a href="/documents/upload">Upload invoice or receipt</a></p>
+
+<Virtualize Context="document" ItemsProvider="LoadDocuments" ItemSize="48">
+    <div class="document-row" @key="document.Id">
+        <a href="/documents/@document.Id">@document.FileName</a>
+        <span aria-label="Status">@document.Status</span>
+        <time datetime="@document.CreatedAt.ToString("O")">@document.CreatedAt.LocalDateTime.ToString("g")</time>
+    </div>
+</Virtualize>
+
+@code {
+    private async ValueTask<ItemsProviderResult<DocumentSummary>> LoadDocuments(ItemsProviderRequest request)
+    {
+        var documents = await InvoiceRepository.ListAsync(request.StartIndex, Math.Max(request.Count, 20), request.CancellationToken);
+        return new ItemsProviderResult<DocumentSummary>(documents, documents.Count == request.Count ? request.StartIndex + documents.Count + 1 : request.StartIndex + documents.Count);
+    }
+}

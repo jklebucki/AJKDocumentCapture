@@ -1,0 +1,38 @@
+@page "/documents/{DocumentId:guid}"
+@inject IInvoiceRepository InvoiceRepository
+
+<PageTitle>Document</PageTitle>
+
+@if (document is null)
+{
+    <p>Document not found.</p>
+}
+else
+{
+    <h1>@document.Source.OriginalFileName</h1>
+    <dl>
+        <dt>Status</dt><dd aria-live="polite">@document.Status</dd>
+        <dt>Type</dt><dd>@document.Type</dd>
+        <dt>Source hash</dt><dd><code>@document.Source.Sha256</code></dd>
+    </dl>
+    @if (document.Issues.Count > 0)
+    {
+        <h2>Validation issues</h2>
+        <ul>
+            @foreach (var issue in document.Issues)
+            {
+                <li @key="issue.Code">@issue.Code: @issue.Message</li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    [Parameter] public Guid DocumentId { get; set; }
+    private InvoiceDocument? document;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        document = await InvoiceRepository.GetAsync(new DocumentId(DocumentId), CancellationToken.None);
+    }
+}

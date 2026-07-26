@@ -1,0 +1,31 @@
+@page "/documents/upload"
+@inject UploadDocumentHandler UploadHandler
+@inject NavigationManager Navigation
+
+<PageTitle>Upload document</PageTitle>
+
+<h1>Upload document</h1>
+<p>PDF, JPEG, PNG or TIFF; maximum 25 MiB.</p>
+<InputFile OnChange="UploadAsync" accept="application/pdf,image/jpeg,image/png,image/tiff" aria-label="Select a document to upload" />
+<p aria-live="polite">@message</p>
+
+@code {
+    private string message = string.Empty;
+
+    private async Task UploadAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        await using var content = file.OpenReadStream(25L * 1024 * 1024, cancellation.Token);
+        try
+        {
+            var result = await UploadHandler.HandleAsync(new UploadRequest(file.Name, file.ContentType, content, Guid.NewGuid().ToString("N")), cancellation.Token);
+            message = "Document accepted. Processing has been queued.";
+            Navigation.NavigateTo($"/documents/{result.DocumentId}");
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            message = exception.Message;
+        }
+    }
+}

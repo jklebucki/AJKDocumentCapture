@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Invoice Capture">
+  <defs>
+    <linearGradient id="g" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#0ea5a4"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#g)"/>
+  <path d="M20 13h17l9 9v27a4 4 0 0 1-4 4H20a4 4 0 0 1-4-4V17a4 4 0 0 1 4-4Z" fill="#fff" fill-opacity=".97"/>
+  <path d="M37 13v10h9" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M23 32h18M23 39h18M23 46h11" stroke="#0f766e" stroke-width="3" stroke-linecap="round"/>
+  <path d="m43 43 3 3 6-7" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
