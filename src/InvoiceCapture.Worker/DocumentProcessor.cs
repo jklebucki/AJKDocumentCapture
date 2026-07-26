@@ -13,7 +13,7 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
         var document = await invoices.GetAsync(job.DocumentId, cancellationToken) ?? throw new InvalidOperationException("The job document does not exist.");
         try
         {
-            await jobs.RecordEventAsync(job.DocumentId, job.Id, "Started", job.Stage, $"Worker started {job.Stage}.", cancellationToken);
+            await jobs.RecordEventAsync(job.DocumentId, job.Id, "Started", job.Stage, DescribeStage(job.Stage), cancellationToken);
             switch (job.Stage)
             {
                 case nameof(ProcessingStatus.Queued):
@@ -115,6 +115,16 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
     }
 
     private static string? GetString(JsonElement element, string propertyName) => element.TryGetProperty(propertyName, out var node) && node.ValueKind != JsonValueKind.Null ? node.GetString() : null;
+
+    private static string DescribeStage(string stage) => stage switch
+    {
+        nameof(ProcessingStatus.Queued) => "Invoice Capture Worker is preparing the job for processing.",
+        nameof(ProcessingStatus.Normalizing) => "Invoice Capture Worker is normalizing the source document.",
+        nameof(ProcessingStatus.OcrRunning) => "PaddleOCR-VL is performing OCR and layout analysis.",
+        nameof(ProcessingStatus.Extracting) => "Ollama gpt-oss:20b is extracting structured invoice fields from OCR output.",
+        nameof(ProcessingStatus.Validating) => "C# InvoiceValidator is applying deterministic validation rules.",
+        _ => $"Invoice Capture Worker is processing {stage}."
+    };
 
     private static string FindMarkdown(string raw)
     {

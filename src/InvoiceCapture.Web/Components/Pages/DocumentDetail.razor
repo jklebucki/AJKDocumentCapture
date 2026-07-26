@@ -64,7 +64,7 @@
                         <li @key="@(processingEvent.OccurredAt.ToUnixTimeMilliseconds().ToString() + processingEvent.Kind)">
                             <time datetime="@processingEvent.OccurredAt.ToString("O")">@processingEvent.OccurredAt.LocalDateTime.ToString("dd MMM yyyy, HH:mm:ss")</time>
                             <strong>@processingEvent.Kind</strong>
-                            <span>@processingEvent.Detail</span>
+                            <span>@DescribeEvent(processingEvent)</span>
                         </li>
                     }
                 </ol>
@@ -85,4 +85,18 @@
     }
 
     private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+    private static string DescribeEvent(ProcessingEvent processingEvent) =>
+        processingEvent.Kind == "Started" && processingEvent.Detail.StartsWith("Worker started", StringComparison.Ordinal)
+            ? DescribeLegacyStartedStage(processingEvent.Stage, processingEvent.Detail)
+            : processingEvent.Detail;
+
+    private static string DescribeLegacyStartedStage(string stage, string detail) => stage switch
+    {
+        nameof(ProcessingStatus.Queued) => "Invoice Capture Worker is preparing the job for processing.",
+        nameof(ProcessingStatus.Normalizing) => "Invoice Capture Worker is normalizing the source document.",
+        nameof(ProcessingStatus.OcrRunning) => "PaddleOCR-VL is performing OCR and layout analysis.",
+        nameof(ProcessingStatus.Extracting) => "Ollama gpt-oss:20b is extracting structured invoice fields from OCR output.",
+        nameof(ProcessingStatus.Validating) => "C# InvoiceValidator is applying deterministic validation rules.",
+        _ => detail
+    };
 }
