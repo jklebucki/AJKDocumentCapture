@@ -24,6 +24,10 @@ public sealed class LoadDocumentReviewHandler(IInvoiceRepository invoices, IBlob
         {
             return new DocumentReviewResult(document, null, "The extraction artifact is not available yet. Restart processing after resolving any provider issue.");
         }
+        catch (DirectoryNotFoundException)
+        {
+            return new DocumentReviewResult(document, null, "The extraction artifact is not available yet. Restart processing after resolving any provider issue.");
+        }
         catch (JsonException)
         {
             return new DocumentReviewResult(document, null, "The extraction artifact is invalid and cannot be reviewed.");
