@@ -41,7 +41,7 @@ services:
       storage-init: { condition: service_completed_successfully }
     ports: ["${WEB_BIND}:${WEB_PORT}:8080"]
     extra_hosts: ["host.docker.internal:host-gateway"]
-    networks: [private]
+    networks: [private, model-download]
   invoice-worker:
     build:
       context: ..

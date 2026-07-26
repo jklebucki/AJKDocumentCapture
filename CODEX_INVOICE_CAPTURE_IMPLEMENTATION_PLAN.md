@@ -149,11 +149,12 @@ IClock
 
 - [ ] Globalny `InteractiveServer`; WebSockets; poprawny CSP; nie dodawaj osobnego klienta SPA.
 - [ ] Strony/komponenty:
-  - `/documents` — filtrowana, wirtualizowana kolejka (`Virtualize`), status aktualizowany push;
+  - [x] `/documents` — filtrowana, wirtualizowana kolejka (`Virtualize`);
+  - [ ] Status kolejki aktualizowany push.
   - `/documents/upload` — drag/drop, walidacja MIME/signature/size, upload streaming;
   - `/documents/{id}` — podział: PDF/image preview + formularz danych + issues + historia;
   - `/settings` — endpointy, limity, profile eksportu bez pokazywania sekretów;
-  - `/health`/admin diagnostics bez danych dokumentów.
+  - [x] `/health`/admin diagnostics bez danych dokumentów.
 - [ ] Edycja: `EditForm`, walidacja przy zmianie pola z debounce 250–400 ms; anuluj poprzednie żądanie przez `CancellationTokenSource`.
 - [ ] Po zapisie odśwież tylko model/sekcję; używaj stabilnych `@key` dla wierszy pozycji.
 - [ ] Operacje długie natychmiast zwracają `jobId`; przyciski pokazują etap/progress i pozostają responsywne.

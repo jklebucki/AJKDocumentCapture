@@ -10,3 +10,6 @@
 - Never log document contents, OCR/model output, tax IDs, bank accounts or secrets.
 - Add a regression test for each bug fix. Each completed phase runs format, build and tests.
 - Keep commits small and cohesive. Update the implementation plan only after the stated verification succeeds.
+- Treat every operational screen as an internal business-product interface: compact information hierarchy, semantic tables/forms, keyboard-first navigation, visible focus, responsive layout and explicit empty/loading/error states.
+- Use a restrained visual system (clear typography, generous whitespace, status color plus text, no decorative clutter); preserve accessibility with AA contrast, labels, `aria-live` for async feedback and controls that work without a pointer.
+- For data-dense views, filter and sort at the server boundary, retain stable row identity and expose a manual refresh/test action when live push is unavailable.

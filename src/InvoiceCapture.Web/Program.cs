@@ -10,6 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddInvoiceInfrastructure(builder.Configuration);
+builder.Services.AddHttpClient("diagnostics", client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddScoped<SystemDiagnosticsService>();
 builder.Services.AddScoped<UploadDocumentHandler>();
 builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 25L * 1024 * 1024);
 builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
@@ -20,7 +22,7 @@ if (app.Environment.IsDevelopment())
 {
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<InvoiceCaptureDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    await DevelopmentDatabaseInitializer.EnsureCurrentSchemaAsync(db, CancellationToken.None);
 }
 
 // Configure the HTTP request pipeline.

@@ -17,6 +17,10 @@ public sealed class InvoiceCaptureDbContext(DbContextOptions<InvoiceCaptureDbCon
         invoices.Property(x => x.Sha256).HasMaxLength(64);
         invoices.Property(x => x.OriginalPath).HasMaxLength(512);
         invoices.Property(x => x.Status).HasMaxLength(32);
+        invoices.Property(x => x.BuyerNip).HasMaxLength(32);
+        invoices.Property(x => x.SellerNip).HasMaxLength(32);
+        invoices.Property(x => x.BuyerName).HasMaxLength(512);
+        invoices.Property(x => x.SellerName).HasMaxLength(512);
         invoices.Property(x => x.Version).IsRowVersion();
         invoices.HasIndex(x => x.Sha256);
         invoices.HasIndex(x => new { x.Status, x.CreatedAt });

@@ -24,7 +24,7 @@ public sealed class EfProcessingJobRepository(InvoiceCaptureDbContext db) : IPro
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            UPDATE processing_jobs SET "LeaseOwner" = @owner, "LeaseUntil" = NOW() + @lease, "Attempt" = "Attempt" + 1
+            UPDATE processing_jobs SET "LeaseOwner" = @owner, "LeaseUntil" = NOW() + @lease, "Attempt" = "Attempt" + 1, "ProcessingStartedAt" = COALESCE("ProcessingStartedAt", NOW())
             WHERE "Id" = (SELECT "Id" FROM processing_jobs WHERE "Status" = 'Queued' AND ("NextAttemptAt" IS NULL OR "NextAttemptAt" <= NOW()) AND ("LeaseUntil" IS NULL OR "LeaseUntil" < NOW()) ORDER BY "NextAttemptAt" FOR UPDATE SKIP LOCKED LIMIT 1)
             RETURNING "Id", "DocumentId", "IdempotencyKey", "Status", "Stage", "Attempt", "LeaseOwner", "LeaseUntil", "ErrorCode";
             """;

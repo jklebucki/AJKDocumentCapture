@@ -17,6 +17,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IBlobStore, FileSystemBlobStore>();
         services.AddScoped<IInvoiceRepository, EfInvoiceRepository>();
         services.AddScoped<IProcessingJobRepository, EfProcessingJobRepository>();
+        services.AddSingleton<IWorkerHeartbeat, FileSystemWorkerHeartbeat>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IInvoiceValidator, InvoiceValidator>();
         services.AddHttpClient<IOcrClient, PaddleOcrClient>((provider, client) => { var o = provider.GetRequiredService<IOptions<PaddleOcrOptions>>().Value; client.BaseAddress = new Uri(o.BaseUrl.TrimEnd('/') + "/"); client.Timeout = TimeSpan.FromSeconds(o.TimeoutSeconds); });

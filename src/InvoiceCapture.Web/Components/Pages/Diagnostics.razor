@@ -1,0 +1,80 @@
+@page "/diagnostics"
+@inject SystemDiagnosticsService DiagnosticsService
+
+<PageTitle>System diagnostics</PageTitle>
+
+<section class="page-shell diagnostics-page" aria-labelledby="diagnostics-title">
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Operations</p>
+            <h1 id="diagnostics-title">System diagnostics</h1>
+            <p class="page-description">Live checks for the services needed to accept and process documents.</p>
+        </div>
+        <button class="button button-primary" type="button" @onclick="RunChecksAsync" disabled="@isRunning">
+            @(isRunning ? "Testing…" : "Run checks")
+        </button>
+    </header>
+
+    @if (isRunning && checks.Count == 0)
+    {
+        <div class="workspace-card loading-state" role="status">Testing system dependencies…</div>
+    }
+    else if (checks.Count > 0)
+    {
+        <section class="diagnostics-grid" aria-live="polite">
+            @foreach (var check in checks)
+            {
+                <article class="diagnostic-card diagnostic-@check.Status.ToString().ToLowerInvariant()">
+                    <div class="diagnostic-card-header">
+                        <span class="diagnostic-indicator" aria-hidden="true"></span>
+                        <div>
+                            <h2>@check.Name</h2>
+                            <p>@check.Description</p>
+                        </div>
+                        <span class="status-pill status-@check.Status.ToString().ToLowerInvariant()">@FormatStatus(check.Status)</span>
+                    </div>
+                    <p class="diagnostic-detail">@check.Detail</p>
+                    <time datetime="@check.CheckedAt.ToString("O")">Tested @check.CheckedAt.LocalDateTime.ToString("dd MMM yyyy, HH:mm:ss")</time>
+                </article>
+            }
+        </section>
+    }
+
+    @if (error is not null)
+    {
+        <p class="inline-alert" role="alert">@error</p>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<DiagnosticsCheck> checks = [];
+    private bool isRunning;
+    private string? error;
+
+    protected override Task OnInitializedAsync() => RunChecksAsync();
+
+    private async Task RunChecksAsync()
+    {
+        isRunning = true;
+        error = null;
+        try
+        {
+            checks = await DiagnosticsService.CheckAsync(CancellationToken.None);
+        }
+        catch (Exception)
+        {
+            error = "Diagnostics could not be completed. Try again.";
+        }
+        finally
+        {
+            isRunning = false;
+        }
+    }
+
+    private static string FormatStatus(DiagnosticsStatus status) => status switch
+    {
+        DiagnosticsStatus.Healthy => "Healthy",
+        DiagnosticsStatus.Warning => "Attention",
+        _ => "Unavailable"
+    };
+}

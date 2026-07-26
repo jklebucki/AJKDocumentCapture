@@ -5,6 +5,7 @@ namespace InvoiceCapture.Worker;
 public sealed class DocumentWorker(IServiceScopeFactory scopeFactory, ILogger<DocumentWorker> logger) : BackgroundService
 {
     private readonly string workerId = $"{Environment.MachineName}-{Guid.NewGuid():N}";
+    private DateTimeOffset lastHeartbeatAt = DateTimeOffset.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -13,6 +14,12 @@ public sealed class DocumentWorker(IServiceScopeFactory scopeFactory, ILogger<Do
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
+                if (DateTimeOffset.UtcNow - lastHeartbeatAt > TimeSpan.FromSeconds(10))
+                {
+                    var heartbeat = scope.ServiceProvider.GetRequiredService<IWorkerHeartbeat>();
+                    await heartbeat.BeatAsync(stoppingToken);
+                    lastHeartbeatAt = DateTimeOffset.UtcNow;
+                }
                 var repository = scope.ServiceProvider.GetRequiredService<IProcessingJobRepository>();
                 var job = await repository.TryAcquireAsync(workerId, TimeSpan.FromMinutes(5), stoppingToken);
                 if (job is null)

@@ -83,10 +83,13 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
         var root = json.RootElement;
         var type = root.TryGetProperty("documentType", out var typeNode) && Enum.TryParse<DocumentType>(typeNode.GetString(), true, out var parsedType) ? parsedType : DocumentType.Unknown;
         var number = GetString(root, "invoiceNumber");
-        var nip = GetString(root, "sellerNip");
+        var sellerNip = GetString(root, "sellerNip");
+        var sellerName = GetString(root, "sellerName");
+        var buyerNip = GetString(root, "buyerNip");
+        var buyerName = GetString(root, "buyerName");
         DateOnly? date = DateOnly.TryParse(GetString(root, "issueDate"), out var parsedDate) ? parsedDate : null;
         var currency = GetString(root, "currency") ?? "PLN";
-        document.ApplyExtraction(type, new InvoiceParty(null, nip, null), null, number, date, null, currency, null, null, [], [], null);
+        document.ApplyExtraction(type, new InvoiceParty(sellerName, sellerNip, null), new InvoiceParty(buyerName, buyerNip, null), number, date, null, currency, null, null, [], [], null);
         document.SetValidationIssues(validator.Validate(document));
     }
 

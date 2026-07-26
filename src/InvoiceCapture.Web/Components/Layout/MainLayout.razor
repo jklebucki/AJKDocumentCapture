@@ -1,9 +1,15 @@
 ﻿@inherits LayoutComponentBase
 
 <header class="app-header">
-    <a href="/documents" aria-label="Invoice Capture — document queue">
-        <img src="logo.svg" alt="Invoice Capture" class="app-logo" />
-    </a>
+    <div class="header-content">
+        <a href="/documents" aria-label="Invoice Capture — document queue">
+            <img src="logo.svg" alt="Invoice Capture" class="app-logo" />
+        </a>
+        <nav aria-label="Primary navigation">
+            <a href="/documents">Queue</a>
+            <a href="/diagnostics">Diagnostics</a>
+        </nav>
+    </div>
 </header>
 
 <main>

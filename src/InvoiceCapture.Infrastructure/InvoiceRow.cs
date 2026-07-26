@@ -10,5 +10,9 @@ internal sealed class InvoiceRow
     public required string OriginalPath { get; set; }
     public string Status { get; set; } = "Uploaded";
     public DateTimeOffset CreatedAt { get; set; }
+    public string? BuyerNip { get; set; }
+    public string? BuyerName { get; set; }
+    public string? SellerNip { get; set; }
+    public string? SellerName { get; set; }
     public uint Version { get; set; }
 }

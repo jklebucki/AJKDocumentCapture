@@ -1,31 +1,56 @@
 @page "/documents/{DocumentId:guid}"
 @inject IInvoiceRepository InvoiceRepository
 
-<PageTitle>Document</PageTitle>
+<PageTitle>Document details</PageTitle>
 
-@if (document is null)
-{
-    <p>Document not found.</p>
-}
-else
-{
-    <h1>@document.Source.OriginalFileName</h1>
-    <dl>
-        <dt>Status</dt><dd aria-live="polite">@document.Status</dd>
-        <dt>Type</dt><dd>@document.Type</dd>
-        <dt>Source hash</dt><dd><code>@document.Source.Sha256</code></dd>
-    </dl>
-    @if (document.Issues.Count > 0)
+<section class="page-shell" aria-labelledby="document-title">
+    @if (document is null)
     {
-        <h2>Validation issues</h2>
-        <ul>
-            @foreach (var issue in document.Issues)
-            {
-                <li @key="issue.Code">@issue.Code: @issue.Message</li>
-            }
-        </ul>
+        <div class="workspace-card loading-state">Document not found.</div>
     }
-}
+    else
+    {
+        <header class="page-heading">
+            <div>
+                <p class="eyebrow">Document</p>
+                <h1 id="document-title">@document.Source.OriginalFileName</h1>
+                <p class="page-description">Review extracted parties and processing outcome.</p>
+            </div>
+            <a class="button button-secondary" href="/documents">Back to queue</a>
+        </header>
+        <div class="detail-grid">
+            <section class="workspace-card detail-card">
+                <h2>Processing</h2>
+                <dl class="definition-list">
+                    <dt>Status</dt><dd aria-live="polite"><span class="status-pill status-@document.Status.ToString().ToLowerInvariant()">@document.Status</span></dd>
+                    <dt>Type</dt><dd>@document.Type</dd>
+                    <dt>Source hash</dt><dd><code>@document.Source.Sha256</code></dd>
+                </dl>
+            </section>
+            <section class="workspace-card detail-card">
+                <h2>Parties</h2>
+                <dl class="definition-list">
+                    <dt>Buyer</dt><dd>@Display(document.Buyer?.Name)</dd>
+                    <dt>Buyer NIP</dt><dd><code>@Display(document.Buyer?.Nip)</code></dd>
+                    <dt>Seller</dt><dd>@Display(document.Seller?.Name)</dd>
+                    <dt>Seller NIP</dt><dd><code>@Display(document.Seller?.Nip)</code></dd>
+                </dl>
+            </section>
+        </div>
+        @if (document.Issues.Count > 0)
+        {
+            <section class="workspace-card detail-card issues-card">
+                <h2>Validation issues</h2>
+                <ul class="issue-list">
+                    @foreach (var issue in document.Issues)
+                    {
+                        <li @key="issue.Code"><strong>@issue.Code</strong> @issue.Message</li>
+                    }
+                </ul>
+            </section>
+        }
+    }
+</section>
 
 @code {
     [Parameter] public Guid DocumentId { get; set; }
@@ -35,4 +60,6 @@ else
     {
         document = await InvoiceRepository.GetAsync(new DocumentId(DocumentId), CancellationToken.None);
     }
+
+    private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
 }

@@ -1,23 +1,145 @@
 @page "/documents"
+@implements IAsyncDisposable
 @inject IInvoiceRepository InvoiceRepository
 
-<PageTitle>Documents</PageTitle>
+<PageTitle>Document queue</PageTitle>
 
-<h1>Documents</h1>
-<p><a href="/documents/upload">Upload invoice or receipt</a></p>
+<section class="page-shell queue-page" aria-labelledby="queue-title">
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Operations</p>
+            <h1 id="queue-title">Document queue</h1>
+            <p class="page-description">Search every submitted document and follow its processing state.</p>
+        </div>
+        <a class="button button-primary" href="/documents/upload">Upload document</a>
+    </header>
 
-<Virtualize Context="document" ItemsProvider="LoadDocuments" ItemSize="48">
-    <div class="document-row" @key="document.Id">
-        <a href="/documents/@document.Id">@document.FileName</a>
-        <span aria-label="Status">@document.Status</span>
-        <time datetime="@document.CreatedAt.ToString("O")">@document.CreatedAt.LocalDateTime.ToString("g")</time>
-    </div>
-</Virtualize>
+    <section class="workspace-card queue-card" aria-label="Document search and results">
+        <div class="table-toolbar">
+            <label class="search-field" for="document-search">
+                <span class="sr-only">Search documents</span>
+                <span aria-hidden="true" class="search-icon">⌕</span>
+                <input id="document-search" type="search" value="@searchTerm" @oninput="OnSearchInputAsync" placeholder="Search file, status, name or NIP…" autocomplete="off" />
+            </label>
+            @if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                <button class="button button-quiet" type="button" @onclick="ClearSearchAsync">Clear</button>
+            }
+            <button class="button button-secondary" type="button" @onclick="RefreshAsync">Refresh</button>
+        </div>
+
+        @if (loadError is not null)
+        {
+            <p class="inline-alert" role="alert">The queue could not be loaded. Try refreshing.</p>
+        }
+
+        <div class="table-scroll" tabindex="0">
+            <table class="data-table document-table">
+                <caption class="sr-only">Submitted documents and their processing state</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Upload / processing</th>
+                        <th scope="col">File</th>
+                        <th scope="col">State</th>
+                        <th scope="col">Buyer NIP</th>
+                        <th scope="col">Buyer</th>
+                        <th scope="col">Seller NIP</th>
+                        <th scope="col">Seller</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <Virtualize @ref="documentTable" Context="document" ItemsProvider="LoadDocuments" ItemSize="58" SpacerElement="tr">
+                        <tr @key="document.Id" class="document-record">
+                            <td data-label="Upload / processing" class="time-cell">
+                                <time datetime="@document.UploadedAt.ToString("O")">@document.UploadedAt.LocalDateTime.ToString("dd MMM, HH:mm")</time>
+                                <span>Started: @FormatDateTime(document.ProcessingStartedAt)</span>
+                            </td>
+                            <td data-label="File" class="file-cell">
+                                <a href="/documents/@document.Id">@document.FileName</a>
+                            </td>
+                            <td data-label="State">
+                                <span class="status-pill status-@document.Status.ToString().ToLowerInvariant()">@FormatStatus(document.Status)</span>
+                                @if (!string.IsNullOrWhiteSpace(document.ProcessingStage) && !string.Equals(document.ProcessingStage, document.Status.ToString(), StringComparison.Ordinal))
+                                {
+                                    <span class="stage-label">@FormatStage(document.ProcessingStage)</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(document.ErrorCode))
+                                {
+                                    <span class="error-label">Action needed</span>
+                                }
+                            </td>
+                            <td data-label="Buyer NIP"><code>@Display(document.BuyerNip)</code></td>
+                            <td data-label="Buyer">@Display(document.BuyerName)</td>
+                            <td data-label="Seller NIP"><code>@Display(document.SellerNip)</code></td>
+                            <td data-label="Seller">@Display(document.SellerName)</td>
+                        </tr>
+                    </Virtualize>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
 
 @code {
+    private Virtualize<DocumentSummary>? documentTable;
+    private CancellationTokenSource? searchCancellation;
+    private string searchTerm = string.Empty;
+    private string? loadError;
+
     private async ValueTask<ItemsProviderResult<DocumentSummary>> LoadDocuments(ItemsProviderRequest request)
     {
-        var documents = await InvoiceRepository.ListAsync(request.StartIndex, Math.Max(request.Count, 20), request.CancellationToken);
-        return new ItemsProviderResult<DocumentSummary>(documents, documents.Count == request.Count ? request.StartIndex + documents.Count + 1 : request.StartIndex + documents.Count);
+        try
+        {
+            loadError = null;
+            var total = await InvoiceRepository.CountAsync(searchTerm, request.CancellationToken);
+            var documents = await InvoiceRepository.ListAsync(searchTerm, request.StartIndex, Math.Max(request.Count, 20), request.CancellationToken);
+            return new ItemsProviderResult<DocumentSummary>(documents, total);
+        }
+        catch (OperationCanceledException) when (request.CancellationToken.IsCancellationRequested)
+        {
+            return new ItemsProviderResult<DocumentSummary>([], 0);
+        }
+        catch (Exception)
+        {
+            loadError = "The queue could not be loaded.";
+            return new ItemsProviderResult<DocumentSummary>([], 0);
+        }
+    }
+
+    private async Task OnSearchInputAsync(ChangeEventArgs args)
+    {
+        searchTerm = args.Value?.ToString() ?? string.Empty;
+        searchCancellation?.Cancel();
+        searchCancellation?.Dispose();
+        searchCancellation = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(300), searchCancellation.Token);
+            await RefreshAsync();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task ClearSearchAsync()
+    {
+        searchTerm = string.Empty;
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (documentTable is not null) { await documentTable.RefreshDataAsync(); }
+    }
+
+    private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+    private static string FormatDateTime(DateTimeOffset? value) => value?.LocalDateTime.ToString("dd MMM, HH:mm") ?? "—";
+    private static string FormatStage(string stage) => System.Text.RegularExpressions.Regex.Replace(stage, "([a-z])([A-Z])", "$1 $2");
+    private static string FormatStatus(ProcessingStatus status) => FormatStage(status.ToString());
+
+    public ValueTask DisposeAsync()
+    {
+        searchCancellation?.Cancel();
+        searchCancellation?.Dispose();
+        return ValueTask.CompletedTask;
     }
 }
