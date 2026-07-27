@@ -157,7 +157,7 @@ IClock
 - [x] `/documents/{id}` — zachowane issues oraz historia przetwarzania; `/documents/{id}/review` pokazuje XML artefaktu i podgląd źródła. Eksporter ERP oraz optymalizator PDF nadal nie są zaimplementowane.
   - `/settings` — endpointy, limity, profile eksportu bez pokazywania sekretów;
   - [x] `/health`/admin diagnostics bez danych dokumentów.
-- [ ] Edycja: `EditForm`, walidacja przy zmianie pola z debounce 250–400 ms; anuluj poprzednie żądanie przez `CancellationTokenSource`.
+- [ ] Edycja: `EditForm`, walidacja przy zmianie pola z debounce 250–400 ms; anuluj poprzednie żądanie przez `CancellationTokenSource`. Zaimplementowano zapis ręczny podstawowych danych i walidację po zapisie; debounce pozostaje do wykonania.
 - [ ] Po zapisie odśwież tylko model/sekcję; używaj stabilnych `@key` dla wierszy pozycji.
 - [ ] Operacje długie natychmiast zwracają `jobId`; przyciski pokazują etap/progress i pozostają responsywne.
 - [ ] Podgląd PDF: lokalny `iframe/object` lub bezpieczna biblioteka JS; URL krótkotrwały, autoryzowany, bez publicznej ścieżki plikowej.
@@ -184,6 +184,8 @@ IClock
 - [x] Zapisuj surową, kanoniczną odpowiedź Ollama jako `artifacts/extraction.json`; dostęp do niej w historii przetwarzania jest możliwy z przycisku ikonowego.
 - [x] Kontrakt ekstrakcji Comarch 7.77 zawiera pełne, uporządkowane drzewo XML (`name`/`value`/`children`), zdolne odwzorować wszystkie ścieżki czterech dostarczonych XSD (do 595) bez zgadywania.
 - [x] Podgląd review renderuje XML deterministycznie i waliduje go względem właściwego dostarczonego XSD Comarch 7.77; błąd pozostaje widoczny przy dokumencie.
+- [x] Prompt Ollama jest kompaktowy: bez XSD/listy ścieżek; logo aplikacji otwiera podgląd instrukcji bez OCR dokumentu.
+- [x] Karta dokumentu umożliwia ręczne uzupełnienie podstawowych danych i ponowną walidację; wartości są trwale zapisywane.
 - [ ] Produkcyjny eksport XML Comarch: wymaga zatwierdzonego przez Comarch XSD, testowych komunikatów zaakceptowanych przez docelowy ERP oraz reguł Schematron zależnych od kontekstu biznesowego. Podgląd review nie zapisuje jeszcze `output/document.xml`.
 
 - [ ] Nie używaj nazwy przesłanej przez użytkownika jako ścieżki. Generuj UUID; nazwę przechowuj tylko jako metadane.

@@ -13,6 +13,16 @@ public static class DevelopmentDatabaseInitializer
             ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "BuyerName" character varying(512);
             ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "SellerNip" character varying(32);
             ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "SellerName" character varying(512);
+            ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "Type" character varying(32) NOT NULL DEFAULT 'Unknown';
+            ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "InvoiceNumber" character varying(256);
+            ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "IssueDate" date;
+            ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "DueDate" date;
+            ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "Currency" character varying(3) NOT NULL DEFAULT 'PLN';
+            ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "PaymentMethod" character varying(256);
+            ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "BankAccount" character varying(34);
+            ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "NetAmount" numeric;
+            ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "VatAmount" numeric;
+            ALTER TABLE invoice_documents ADD COLUMN IF NOT EXISTS "GrossAmount" numeric;
             ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS "ProcessingStartedAt" timestamp with time zone;
             CREATE TABLE IF NOT EXISTS processing_events (
                 "Id" uuid PRIMARY KEY,

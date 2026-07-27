@@ -10,6 +10,8 @@ flowchart LR
   V --> R["Ready / ReviewRequired"]
 ```
 
+Prompt Ollama jest celowo krótki: zawiera zasady bezpieczeństwa, minimalny szkielet faktury i kontrakt drzewa XML. Nie zawiera XSD ani listy ścieżek; po odpowiedzi deterministyczny renderer i walidator XSD sprawdzają strukturę. Z poziomu logo aplikacji dostępny jest podgląd samych instrukcji, bez OCR lub danych dokumentu.
+
 Worker przechodzi trwałymi etapami `Normalizing → OcrRunning → Extracting → Validating`. `PaddleOCR-VL-1.6` zwraca pełny JSON, który jest zachowany w artefakcie; do gpt-oss trafia wyłącznie pole Markdown i identyfikatory bloków. Klient Ollama wysyła `/api/chat`, `stream=false`, `temperature=0` i JSON Schema; prompt traktuje OCR jako nieufny materiał oraz zabrania zgadywania.
 
 Raw OCR i odpowiedź ekstraktora trafiają do artefaktów, nie do logów. Dane adresu Ollama pochodzą wyłącznie z `OLLAMA_BASE_URL`/konfiguracji środowiska.

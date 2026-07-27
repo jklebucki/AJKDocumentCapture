@@ -21,7 +21,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IInvoiceValidator, InvoiceValidator>();
         services.AddSingleton<IComarchInvoiceXmlValidator, ComarchKsefXmlSchemaValidator>();
-        services.AddSingleton<ComarchKsefSchemaGuideProvider>();
+        services.AddSingleton<OllamaPromptPreviewService>();
         services.AddHttpClient<IOcrClient, PaddleOcrClient>((provider, client) => { var o = provider.GetRequiredService<IOptions<PaddleOcrOptions>>().Value; client.BaseAddress = new Uri(o.BaseUrl.TrimEnd('/') + "/"); client.Timeout = TimeSpan.FromSeconds(o.TimeoutSeconds); });
         services.AddHttpClient<IInvoiceExtractionClient, OllamaExtractionClient>((provider, client) => { var o = provider.GetRequiredService<IOptions<OllamaOptions>>().Value; client.BaseAddress = new Uri(o.BaseUrl.TrimEnd('/') + "/"); client.Timeout = TimeSpan.FromSeconds(o.TimeoutSeconds); });
         return services;

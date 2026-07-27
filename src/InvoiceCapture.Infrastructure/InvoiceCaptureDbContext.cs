@@ -19,6 +19,11 @@ public sealed class InvoiceCaptureDbContext(DbContextOptions<InvoiceCaptureDbCon
         invoices.Property(x => x.Sha256).HasMaxLength(64);
         invoices.Property(x => x.OriginalPath).HasMaxLength(512);
         invoices.Property(x => x.Status).HasMaxLength(32);
+        invoices.Property(x => x.Type).HasMaxLength(32);
+        invoices.Property(x => x.InvoiceNumber).HasMaxLength(256);
+        invoices.Property(x => x.Currency).HasMaxLength(3);
+        invoices.Property(x => x.PaymentMethod).HasMaxLength(256);
+        invoices.Property(x => x.BankAccount).HasMaxLength(34);
         invoices.Property(x => x.BuyerNip).HasMaxLength(32);
         invoices.Property(x => x.SellerNip).HasMaxLength(32);
         invoices.Property(x => x.BuyerName).HasMaxLength(512);

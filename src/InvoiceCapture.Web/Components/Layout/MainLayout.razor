@@ -1,11 +1,26 @@
 ﻿@inherits LayoutComponentBase
+@inject OllamaPromptPreviewService OllamaPromptPreviewService
 
 <div class="app-shell">
     <header class="app-header">
         <div class="header-content">
-            <a href="/documents" aria-label="Invoice Capture — document queue">
+            <button class="logo-trigger" type="button" @onclick="TogglePrompt" aria-label="Invoice Capture — show Ollama prompt" aria-expanded="@isPromptVisible" data-tooltip="Show Ollama prompt">
                 <img src="logo.svg" alt="Invoice Capture" class="app-logo" />
-            </a>
+            </button>
+            @if (isPromptVisible && prompt is not null)
+            {
+                <aside class="header-popper" role="dialog" aria-label="Ollama prompt preview">
+                    <div class="artifact-popper-heading">
+                        <strong>Ollama prompt · @prompt.Model</strong>
+                        <button class="button button-quiet button-small" type="button" @onclick="TogglePrompt">Close</button>
+                    </div>
+                    <p>This preview excludes document OCR and shows only the compact instructions sent with each request.</p>
+                    <h2>System</h2>
+                    <pre><code>@prompt.SystemInstructions</code></pre>
+                    <h2>User template</h2>
+                    <pre><code>@prompt.UserTemplate</code></pre>
+                </aside>
+            }
             <nav aria-label="Primary navigation">
                 <a href="/documents">Queue</a>
                 <a href="/diagnostics">Diagnostics</a>
@@ -24,6 +39,15 @@
         </div>
     </footer>
 </div>
+
+@code {
+    private OllamaPromptPreview? prompt;
+    private bool isPromptVisible;
+
+    protected override void OnInitialized() => prompt = OllamaPromptPreviewService.GetPreview();
+
+    private void TogglePrompt() => isPromptVisible = !isPromptVisible;
+}
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

@@ -16,6 +16,7 @@ builder.Services.AddScoped<SystemDiagnosticsService>();
 builder.Services.AddScoped<UploadDocumentHandler>();
 builder.Services.AddScoped<LoadDocumentReviewHandler>();
 builder.Services.AddScoped<LoadExtractionArtifactHandler>();
+builder.Services.AddScoped<UpdateManualInvoiceHandler>();
 builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 25L * 1024 * 1024);
 builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
 

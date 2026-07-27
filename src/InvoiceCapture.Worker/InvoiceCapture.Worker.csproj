@@ -17,7 +17,4 @@
     <ProjectReference Include="..\InvoiceCapture.Contracts\InvoiceCapture.Contracts.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="..\..\specs\ComarchInvoice\*.xsd" Link="specs\ComarchInvoice\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
 </Project>

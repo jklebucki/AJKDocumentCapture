@@ -17,6 +17,8 @@ public sealed class EfInvoiceRepository(InvoiceCaptureDbContext db) : IInvoiceRe
             SizeBytes = document.Source.SizeBytes,
             OriginalPath = document.Source.OriginalPath,
             Status = document.Status.ToString(),
+            Type = document.Type.ToString(),
+            Currency = document.Currency,
             CreatedAt = DateTimeOffset.UtcNow
         });
         await db.SaveChangesAsync(cancellationToken);
@@ -85,6 +87,16 @@ public sealed class EfInvoiceRepository(InvoiceCaptureDbContext db) : IInvoiceRe
     {
         var row = await db.Invoices.SingleAsync(x => x.Id == document.Id.Value, cancellationToken);
         row.Status = document.Status.ToString();
+        row.Type = document.Type.ToString();
+        row.InvoiceNumber = document.InvoiceNumber;
+        row.IssueDate = document.IssueDate;
+        row.DueDate = document.DueDate;
+        row.Currency = document.Currency;
+        row.PaymentMethod = document.PaymentMethod;
+        row.BankAccount = document.BankAccount;
+        row.NetAmount = document.Totals?.NetAmount;
+        row.VatAmount = document.Totals?.VatAmount;
+        row.GrossAmount = document.Totals?.GrossAmount;
         row.BuyerNip = document.Buyer?.Nip;
         row.BuyerName = document.Buyer?.Name;
         row.SellerNip = document.Seller?.Nip;
@@ -107,21 +119,23 @@ public sealed class EfInvoiceRepository(InvoiceCaptureDbContext db) : IInvoiceRe
     {
         var id = new DocumentId(row.Id);
         var document = new InvoiceDocument(id, new SourceDocument(id, row.OriginalFileName, row.MediaType, row.Sha256, row.SizeBytes, row.OriginalPath));
-        if (row.BuyerNip is not null || row.BuyerName is not null || row.SellerNip is not null || row.SellerName is not null)
+        if (HasExtraction(row))
         {
             document.ApplyExtraction(
-                DocumentType.Unknown,
+                Enum.TryParse<DocumentType>(row.Type, out var type) ? type : DocumentType.Unknown,
                 new InvoiceParty(row.SellerName, row.SellerNip, null),
                 new InvoiceParty(row.BuyerName, row.BuyerNip, null),
-                null,
-                null,
-                null,
-                "PLN",
-                null,
-                null,
+                row.InvoiceNumber,
+                row.IssueDate,
+                row.DueDate,
+                row.Currency,
+                row.PaymentMethod,
+                row.BankAccount,
                 [],
                 [],
-                null);
+                row.NetAmount is not null && row.VatAmount is not null && row.GrossAmount is not null
+                    ? new InvoiceTotals(row.NetAmount.Value, row.VatAmount.Value, row.GrossAmount.Value)
+                    : null);
         }
         var target = Enum.Parse<ProcessingStatus>(row.Status);
         while (document.Status != target && document.Status != ProcessingStatus.Failed)
@@ -144,6 +158,10 @@ public sealed class EfInvoiceRepository(InvoiceCaptureDbContext db) : IInvoiceRe
 
         return document;
     }
+
+    private static bool HasExtraction(InvoiceRow row) =>
+        row.BuyerNip is not null || row.BuyerName is not null || row.SellerNip is not null || row.SellerName is not null ||
+        row.InvoiceNumber is not null || row.IssueDate is not null || row.NetAmount is not null || row.GrossAmount is not null;
 
     private static IQueryable<InvoiceRow> FilterBySearch(IQueryable<InvoiceRow> invoices, string? searchTerm)
     {

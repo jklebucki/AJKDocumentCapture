@@ -2,6 +2,7 @@
 @inject IInvoiceRepository InvoiceRepository
 @inject IProcessingJobRepository ProcessingJobRepository
 @inject LoadExtractionArtifactHandler ExtractionArtifactHandler
+@inject UpdateManualInvoiceHandler ManualInvoiceHandler
 
 <PageTitle>Document details</PageTitle>
 
@@ -39,6 +40,42 @@
                 </dl>
             </section>
         </div>
+        <section class="workspace-card detail-card issues-card" aria-labelledby="manual-data-title">
+            <div class="detail-card-heading">
+                <div>
+                    <h2 id="manual-data-title">Manual completion</h2>
+                    <p>Correct or complete extracted data, then rerun deterministic validation.</p>
+                </div>
+            </div>
+            @if (manualSuccess is not null)
+            {
+                <p class="inline-success" role="status">@manualSuccess</p>
+            }
+            @if (manualError is not null)
+            {
+                <p class="inline-alert" role="alert">@manualError</p>
+            }
+            <EditForm Model="@document" OnValidSubmit="SaveManualAsync">
+                <div class="manual-form-grid">
+                    <label>Invoice number <input @bind="invoiceNumber" /></label>
+                    <label>Issue date <InputDate @bind-Value="issueDate" /></label>
+                    <label>Due date <InputDate @bind-Value="dueDate" /></label>
+                    <label>Currency <input @bind="currency" maxlength="3" /></label>
+                    <label>Buyer name <input @bind="buyerName" /></label>
+                    <label>Buyer NIP <input @bind="buyerNip" inputmode="numeric" /></label>
+                    <label>Seller name <input @bind="sellerName" /></label>
+                    <label>Seller NIP <input @bind="sellerNip" inputmode="numeric" /></label>
+                    <label>Payment method <input @bind="paymentMethod" /></label>
+                    <label>Bank account <input @bind="bankAccount" /></label>
+                    <label>Net amount <InputNumber @bind-Value="netAmount" step="0.01" /></label>
+                    <label>VAT amount <InputNumber @bind-Value="vatAmount" step="0.01" /></label>
+                    <label>Gross amount <InputNumber @bind-Value="grossAmount" step="0.01" /></label>
+                </div>
+                <div class="manual-form-actions">
+                    <button class="button button-primary" type="submit" disabled="@isSaving">@(isSaving ? "Saving…" : "Save and validate")</button>
+                </div>
+            </EditForm>
+        </section>
         @if (document.Issues.Count > 0)
         {
             <section class="workspace-card detail-card issues-card">
@@ -105,12 +142,29 @@
     private IReadOnlyList<ProcessingEvent> events = [];
     private string? extractionJson;
     private bool isExtractionJsonVisible;
+    private string? invoiceNumber;
+    private DateOnly? issueDate;
+    private DateOnly? dueDate;
+    private string? currency;
+    private string? buyerName;
+    private string? buyerNip;
+    private string? sellerName;
+    private string? sellerNip;
+    private string? paymentMethod;
+    private string? bankAccount;
+    private decimal? netAmount;
+    private decimal? vatAmount;
+    private decimal? grossAmount;
+    private string? manualSuccess;
+    private string? manualError;
+    private bool isSaving;
 
     protected override async Task OnParametersSetAsync()
     {
         document = await InvoiceRepository.GetAsync(new DocumentId(DocumentId), CancellationToken.None);
         events = await ProcessingJobRepository.ListEventsAsync(new DocumentId(DocumentId), CancellationToken.None);
         extractionJson = await ExtractionArtifactHandler.HandleAsync(new DocumentId(DocumentId), CancellationToken.None);
+        LoadManualFields();
     }
 
     private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
@@ -133,4 +187,48 @@
         processingEvent.Stage == nameof(ProcessingStatus.Extracting) && processingEvent.Kind == "Started";
 
     private void ToggleExtractionJson() => isExtractionJsonVisible = !isExtractionJsonVisible;
+
+    private void LoadManualFields()
+    {
+        if (document is null) { return; }
+        invoiceNumber = document.InvoiceNumber;
+        issueDate = document.IssueDate;
+        dueDate = document.DueDate;
+        currency = document.Currency;
+        buyerName = document.Buyer?.Name;
+        buyerNip = document.Buyer?.Nip;
+        sellerName = document.Seller?.Name;
+        sellerNip = document.Seller?.Nip;
+        paymentMethod = document.PaymentMethod;
+        bankAccount = document.BankAccount;
+        netAmount = document.Totals?.NetAmount;
+        vatAmount = document.Totals?.VatAmount;
+        grossAmount = document.Totals?.GrossAmount;
+    }
+
+    private async Task SaveManualAsync()
+    {
+        isSaving = true;
+        manualSuccess = null;
+        manualError = null;
+        try
+        {
+            document = await ManualInvoiceHandler.HandleAsync(new DocumentId(DocumentId), new ManualInvoiceUpdate(invoiceNumber, issueDate, dueDate, currency, buyerName, buyerNip, sellerName, sellerNip, paymentMethod, bankAccount, netAmount, vatAmount, grossAmount), CancellationToken.None);
+            if (document is null)
+            {
+                manualError = "Document not found.";
+                return;
+            }
+
+            manualSuccess = "Data saved and validation refreshed.";
+        }
+        catch (Exception)
+        {
+            manualError = "Data could not be saved.";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
 }
