@@ -12,7 +12,7 @@ flowchart LR
   V --> R["Ready / ReviewRequired"]
 ```
 
-Prompt Ollama jest celowo krótki i zwraca wyłącznie normalizowane fakty faktury, problemy oraz dowody OCR — nie XML. Kontrakt rozdziela numer faktury od numeru KSeF, nakazuje `null` i issue przy braku/konflikcie oraz dopuszcza wyłącznie bezstratną normalizację dat i separatorów liczb. Kod .NET deterministycznie dobiera elementy i ich kolejność w podglądzie Comarch, a następnie uruchamia walidację XSD. Ikony przy wpisach historii dokumentu otwierają wyśrodkowany modal z zawartością artefaktu oraz akcją kopiowania.
+Prompt Ollama v6 zwraca wyłącznie normalizowane fakty faktury, problemy oraz dowody OCR — nie XML. Każdy niepusty identyfikator, kontakt, data i kwota wymaga cytatu będącego dokładnym substringiem OCR; model nie może rekonstruować danych z kontekstu, przenosić kwot między pozycjami i podsumowaniem ani wyliczać brakujących cen. Niepusty numer KSeF wymusza profil KSeF, a brak numeru faktury, funkcji dokumentu lub NIP którejkolwiek strony wymusza `needs_review`. Kod .NET deterministycznie dobiera elementy i ich kolejność w podglądzie Comarch, a następnie uruchamia walidację XSD. Ikony przy wpisach historii dokumentu otwierają wyśrodkowany modal z zawartością artefaktu oraz akcją kopiowania.
 
 Worker przechodzi trwałymi etapami `Normalizing → OcrRunning → Extracting → Validating`. `PaddleOCR-VL-1.6` zwraca pełny JSON, który jest zachowany w artefakcie; do gpt-oss trafia wyłącznie pole Markdown i faktycznie odnalezione identyfikatory bloków. Klient Ollama wysyła `/api/chat`, `stream=false`, `think=medium`, `temperature=0` i JSON Schema; prompt traktuje OCR jako nieufny materiał oraz zabrania zgadywania.
 

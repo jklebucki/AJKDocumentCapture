@@ -8,7 +8,7 @@ namespace InvoiceCapture.Infrastructure;
 
 public sealed class OllamaExtractionClient(HttpClient httpClient, IOptions<OllamaOptions> options) : IInvoiceExtractionClient
 {
-    private const string PromptVersion = "invoice-facts-comarch-ecod-v5";
+    private const string PromptVersion = "invoice-facts-comarch-ecod-v6";
 
     public ExtractionRequest PrepareRequest(OcrResult ocrResult)
     {
