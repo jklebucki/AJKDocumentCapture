@@ -184,7 +184,7 @@ IClock
 - [x] Zapisuj surową, kanoniczną odpowiedź Ollama jako `artifacts/extraction.json`; dostęp do niej w historii przetwarzania jest możliwy z przycisku ikonowego.
 - [x] Kontrakt ekstrakcji zwraca normalizowane fakty faktury, issues i evidence zamiast generowanego przez LLM drzewa XML; numer faktury i KSeF są rozłączne, a braki/konflikty wymuszają `needs_review`.
 - [x] Podgląd review mapuje dostępne fakty deterministycznie do uporządkowanego XML właściwego profilu Comarch 7.77 i waliduje go względem XSD; brak danych blokuje tworzenie zastępczego XML i pozostaje widoczny przy dokumencie.
-- [x] Prompt Ollama jest kompaktowy: bez XSD/listy ścieżek; logo aplikacji otwiera podgląd instrukcji bez OCR dokumentu.
+- [x] Prompt Ollama jest kompaktowy: bez XSD/listy ścieżek; pełne request/response są dostępne wyłącznie z wpisów historii konkretnego dokumentu.
 - [x] Przed wywołaniem Ollama zapisywane jest dokładne body `/api/chat` jako niezmienny artefakt konkretnej próby; wpis historii **Ollama request sent** otwiera właściwy prompt i dane OCR, bez zapisywania treści w zwykłych logach.
 - [x] Karta dokumentu umożliwia ręczne uzupełnienie podstawowych danych i ponowną walidację; wartości są trwale zapisywane.
 - [ ] Produkcyjny eksport XML Comarch: wymaga zatwierdzonego przez Comarch XSD, testowych komunikatów zaakceptowanych przez docelowy ERP oraz reguł Schematron zależnych od kontekstu biznesowego. Podgląd review nie zapisuje jeszcze `output/document.xml`.

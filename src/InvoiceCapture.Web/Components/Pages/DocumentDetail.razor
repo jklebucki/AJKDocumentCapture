@@ -4,6 +4,7 @@
 @inject LoadExtractionArtifactHandler ExtractionArtifactHandler
 @inject LoadOllamaRequestArtifactHandler OllamaRequestArtifactHandler
 @inject UpdateManualInvoiceHandler ManualInvoiceHandler
+@inject IJSRuntime JS
 
 <PageTitle>Document details</PageTitle>
 
@@ -107,49 +108,15 @@
                                 @DescribeEvent(processingEvent)
                                 @if (IsOllamaExtraction(processingEvent))
                                 {
-                                    <button class="icon-button event-json-button" type="button" @onclick="ToggleExtractionJson" aria-label="Show Ollama JSON response" aria-expanded="@isExtractionJsonVisible" data-tooltip="Show Ollama JSON response">
+                                    <button class="icon-button event-json-button" type="button" @onclick="ShowExtractionModal" aria-label="Show Ollama JSON response" aria-haspopup="dialog" data-tooltip="Show Ollama JSON response">
                                         <img src="icons/bootstrap-icons-1.13.1/file-earmark-code.svg" alt="" aria-hidden="true" />
                                     </button>
-                                    @if (isExtractionJsonVisible)
-                                    {
-                                        <aside class="artifact-popper" role="dialog" aria-label="Ollama JSON response">
-                                            <div class="artifact-popper-heading">
-                                                <strong>Ollama response JSON</strong>
-                                                <button class="button button-quiet button-small" type="button" @onclick="ToggleExtractionJson">Close</button>
-                                            </div>
-                                            @if (extractionJson is not null)
-                                            {
-                                                <pre><code>@extractionJson</code></pre>
-                                            }
-                                            else
-                                            {
-                                                <p>The Ollama response artifact is not available for this run.</p>
-                                            }
-                                        </aside>
-                                    }
                                 }
                                 @if (TryGetOllamaRequestArtifactId(processingEvent, out var requestArtifactId))
                                 {
-                                    <button class="icon-button event-json-button" type="button" @onclick="() => ToggleOllamaRequestAsync(requestArtifactId)" aria-label="Show exact Ollama request" aria-expanded="@(isOllamaRequestVisible && ollamaRequestArtifactId == requestArtifactId)" data-tooltip="Show exact Ollama request">
+                                    <button class="icon-button event-json-button" type="button" @onclick="() => ShowOllamaRequestModalAsync(requestArtifactId)" aria-label="Show exact Ollama request" aria-haspopup="dialog" data-tooltip="Show exact Ollama request">
                                         <img src="icons/bootstrap-icons-1.13.1/file-earmark-code.svg" alt="" aria-hidden="true" />
                                     </button>
-                                    @if (isOllamaRequestVisible && ollamaRequestArtifactId == requestArtifactId)
-                                    {
-                                        <aside class="artifact-popper" role="dialog" aria-label="Exact Ollama request">
-                                            <div class="artifact-popper-heading">
-                                                <strong>Ollama request · exact /api/chat body</strong>
-                                                <button class="button button-quiet button-small" type="button" @onclick="() => ToggleOllamaRequestAsync(requestArtifactId)">Close</button>
-                                            </div>
-                                            @if (ollamaRequestJson is not null)
-                                            {
-                                                <pre><code>@ollamaRequestJson</code></pre>
-                                            }
-                                            else
-                                            {
-                                                <p>The Ollama request artifact is not available for this run.</p>
-                                            }
-                                        </aside>
-                                    }
                                 }
                             </span>
                         </li>
@@ -157,6 +124,36 @@
                 </ol>
             }
         </section>
+        @if (isArtifactModalVisible)
+        {
+            <div class="modal-backdrop" @onclick="CloseArtifactModal">
+                <section class="artifact-modal" role="dialog" aria-modal="true" aria-labelledby="artifact-modal-title" @onclick:stopPropagation="true" @onkeydown="HandleArtifactModalKeyDown" tabindex="-1">
+                    <header class="artifact-modal-header">
+                        <h2 id="artifact-modal-title">@artifactModalTitle</h2>
+                        <div class="artifact-modal-actions">
+                            <button class="icon-button" type="button" @onclick="CopyArtifactAsync" disabled="@(artifactModalContent is null)" aria-label="Copy displayed content" data-tooltip="Copy content">
+                                <img src="icons/bootstrap-icons-1.13.1/clipboard.svg" alt="" aria-hidden="true" />
+                            </button>
+                            <button class="button button-quiet button-small" type="button" @onclick="CloseArtifactModal">Close</button>
+                        </div>
+                    </header>
+                    <div class="artifact-modal-body">
+                        @if (artifactCopyStatus is not null)
+                        {
+                            <p class="inline-success artifact-copy-status" role="status" aria-live="polite">@artifactCopyStatus</p>
+                        }
+                        @if (artifactModalContent is not null)
+                        {
+                            <pre><code>@artifactModalContent</code></pre>
+                        }
+                        else
+                        {
+                            <p class="diagnostic-detail">@artifactUnavailableMessage</p>
+                        }
+                    </div>
+                </section>
+            </div>
+        }
     }
 </section>
 
@@ -165,10 +162,11 @@
     private InvoiceDocument? document;
     private IReadOnlyList<ProcessingEvent> events = [];
     private string? extractionJson;
-    private bool isExtractionJsonVisible;
-    private string? ollamaRequestJson;
-    private bool isOllamaRequestVisible;
-    private Guid? ollamaRequestArtifactId;
+    private bool isArtifactModalVisible;
+    private string? artifactModalTitle;
+    private string? artifactModalContent;
+    private string? artifactUnavailableMessage;
+    private string? artifactCopyStatus;
     private string? invoiceNumber;
     private DateOnly? issueDate;
     private DateOnly? dueDate;
@@ -191,6 +189,7 @@
         document = await InvoiceRepository.GetAsync(new DocumentId(DocumentId), CancellationToken.None);
         events = await ProcessingJobRepository.ListEventsAsync(new DocumentId(DocumentId), CancellationToken.None);
         extractionJson = await ExtractionArtifactHandler.HandleAsync(new DocumentId(DocumentId), CancellationToken.None);
+        CloseArtifactModal();
         LoadManualFields();
     }
 
@@ -215,19 +214,49 @@
     private static bool IsOllamaExtraction(ProcessingEvent processingEvent) =>
         processingEvent.Stage == nameof(ProcessingStatus.Extracting) && processingEvent.Kind == "Started";
 
-    private void ToggleExtractionJson() => isExtractionJsonVisible = !isExtractionJsonVisible;
-
-    private async Task ToggleOllamaRequestAsync(Guid artifactId)
+    private void ShowExtractionModal()
     {
-        if (isOllamaRequestVisible && ollamaRequestArtifactId == artifactId)
-        {
-            isOllamaRequestVisible = false;
-            return;
-        }
+        ShowArtifactModal("Ollama response JSON", extractionJson, "The Ollama response artifact is not available for this run.");
+    }
 
-        isOllamaRequestVisible = true;
-        ollamaRequestArtifactId = artifactId;
-        ollamaRequestJson = await OllamaRequestArtifactHandler.HandleAsync(new DocumentId(DocumentId), artifactId, CancellationToken.None);
+    private async Task ShowOllamaRequestModalAsync(Guid artifactId)
+    {
+        var content = await OllamaRequestArtifactHandler.HandleAsync(new DocumentId(DocumentId), artifactId, CancellationToken.None);
+        ShowArtifactModal("Ollama request · exact /api/chat body", content, "The Ollama request artifact is not available for this run.");
+    }
+
+    private void ShowArtifactModal(string title, string? content, string unavailableMessage)
+    {
+        artifactModalTitle = title;
+        artifactModalContent = content;
+        artifactUnavailableMessage = unavailableMessage;
+        artifactCopyStatus = null;
+        isArtifactModalVisible = true;
+    }
+
+    private void CloseArtifactModal()
+    {
+        isArtifactModalVisible = false;
+        artifactCopyStatus = null;
+    }
+
+    private async Task CopyArtifactAsync()
+    {
+        if (artifactModalContent is null) { return; }
+        try
+        {
+            await JS.InvokeVoidAsync("invoiceCapture.copyText", artifactModalContent);
+            artifactCopyStatus = "Content copied to the clipboard.";
+        }
+        catch (JSException)
+        {
+            artifactCopyStatus = "The browser could not copy the content. Select the text and copy it manually.";
+        }
+    }
+
+    private void HandleArtifactModalKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape") { CloseArtifactModal(); }
     }
 
     private static bool TryGetOllamaRequestArtifactId(ProcessingEvent processingEvent, out Guid artifactId)
