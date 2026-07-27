@@ -128,17 +128,17 @@
                                         </aside>
                                     }
                                 }
-                                @if (IsOllamaRequest(processingEvent))
+                                @if (TryGetOllamaRequestArtifactId(processingEvent, out var requestArtifactId))
                                 {
-                                    <button class="icon-button event-json-button" type="button" @onclick="ToggleOllamaRequestAsync" aria-label="Show exact Ollama request" aria-expanded="@isOllamaRequestVisible" data-tooltip="Show exact Ollama request">
+                                    <button class="icon-button event-json-button" type="button" @onclick="() => ToggleOllamaRequestAsync(requestArtifactId)" aria-label="Show exact Ollama request" aria-expanded="@(isOllamaRequestVisible && ollamaRequestArtifactId == requestArtifactId)" data-tooltip="Show exact Ollama request">
                                         <img src="icons/bootstrap-icons-1.13.1/file-earmark-code.svg" alt="" aria-hidden="true" />
                                     </button>
-                                    @if (isOllamaRequestVisible)
+                                    @if (isOllamaRequestVisible && ollamaRequestArtifactId == requestArtifactId)
                                     {
                                         <aside class="artifact-popper" role="dialog" aria-label="Exact Ollama request">
                                             <div class="artifact-popper-heading">
                                                 <strong>Ollama request · exact /api/chat body</strong>
-                                                <button class="button button-quiet button-small" type="button" @onclick="ToggleOllamaRequestAsync">Close</button>
+                                                <button class="button button-quiet button-small" type="button" @onclick="() => ToggleOllamaRequestAsync(requestArtifactId)">Close</button>
                                             </div>
                                             @if (ollamaRequestJson is not null)
                                             {
@@ -168,6 +168,7 @@
     private bool isExtractionJsonVisible;
     private string? ollamaRequestJson;
     private bool isOllamaRequestVisible;
+    private Guid? ollamaRequestArtifactId;
     private string? invoiceNumber;
     private DateOnly? issueDate;
     private DateOnly? dueDate;
@@ -197,6 +198,8 @@
     private static string DescribeEvent(ProcessingEvent processingEvent) =>
         processingEvent.Kind == "Started" && processingEvent.Detail.StartsWith("Worker started", StringComparison.Ordinal)
             ? DescribeLegacyStartedStage(processingEvent.Stage, processingEvent.Detail)
+            : processingEvent.Kind == "Ollama request sent"
+                ? "Exact /api/chat body was recorded before sending to Ollama."
             : processingEvent.Detail;
 
     private static string DescribeLegacyStartedStage(string stage, string detail) => stage switch
@@ -212,18 +215,31 @@
     private static bool IsOllamaExtraction(ProcessingEvent processingEvent) =>
         processingEvent.Stage == nameof(ProcessingStatus.Extracting) && processingEvent.Kind == "Started";
 
-    private static bool IsOllamaRequest(ProcessingEvent processingEvent) =>
-        processingEvent.Stage == nameof(ProcessingStatus.Extracting) && processingEvent.Kind == "Ollama request sent";
-
     private void ToggleExtractionJson() => isExtractionJsonVisible = !isExtractionJsonVisible;
 
-    private async Task ToggleOllamaRequestAsync()
+    private async Task ToggleOllamaRequestAsync(Guid artifactId)
     {
-        isOllamaRequestVisible = !isOllamaRequestVisible;
-        if (isOllamaRequestVisible && ollamaRequestJson is null)
+        if (isOllamaRequestVisible && ollamaRequestArtifactId == artifactId)
         {
-            ollamaRequestJson = await OllamaRequestArtifactHandler.HandleAsync(new DocumentId(DocumentId), CancellationToken.None);
+            isOllamaRequestVisible = false;
+            return;
         }
+
+        isOllamaRequestVisible = true;
+        ollamaRequestArtifactId = artifactId;
+        ollamaRequestJson = await OllamaRequestArtifactHandler.HandleAsync(new DocumentId(DocumentId), artifactId, CancellationToken.None);
+    }
+
+    private static bool TryGetOllamaRequestArtifactId(ProcessingEvent processingEvent, out Guid artifactId)
+    {
+        const string prefix = "ollama-request:";
+        if (processingEvent.Stage == nameof(ProcessingStatus.Extracting) && processingEvent.Kind == "Ollama request sent" && processingEvent.Detail.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return Guid.TryParseExact(processingEvent.Detail[prefix.Length..], "N", out artifactId);
+        }
+
+        artifactId = default;
+        return false;
     }
 
     private void LoadManualFields()

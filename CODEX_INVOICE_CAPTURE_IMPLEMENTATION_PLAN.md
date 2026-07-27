@@ -185,7 +185,7 @@ IClock
 - [x] Kontrakt ekstrakcji Comarch 7.77 zawiera pełne, uporządkowane drzewo XML (`name`/`value`/`children`), zdolne odwzorować wszystkie ścieżki czterech dostarczonych XSD (do 595) bez zgadywania.
 - [x] Podgląd review renderuje XML deterministycznie i waliduje go względem właściwego dostarczonego XSD Comarch 7.77; błąd pozostaje widoczny przy dokumencie.
 - [x] Prompt Ollama jest kompaktowy: bez XSD/listy ścieżek; logo aplikacji otwiera podgląd instrukcji bez OCR dokumentu.
-- [x] Przed wywołaniem Ollama zapisywane jest dokładne body `/api/chat` jako artefakt dokumentu; wpis historii **Ollama request sent** otwiera jego podgląd z promptem i danymi OCR, bez zapisywania treści w zwykłych logach.
+- [x] Przed wywołaniem Ollama zapisywane jest dokładne body `/api/chat` jako niezmienny artefakt konkretnej próby; wpis historii **Ollama request sent** otwiera właściwy prompt i dane OCR, bez zapisywania treści w zwykłych logach.
 - [x] Karta dokumentu umożliwia ręczne uzupełnienie podstawowych danych i ponowną walidację; wartości są trwale zapisywane.
 - [ ] Produkcyjny eksport XML Comarch: wymaga zatwierdzonego przez Comarch XSD, testowych komunikatów zaakceptowanych przez docelowy ERP oraz reguł Schematron zależnych od kontekstu biznesowego. Podgląd review nie zapisuje jeszcze `output/document.xml`.
 

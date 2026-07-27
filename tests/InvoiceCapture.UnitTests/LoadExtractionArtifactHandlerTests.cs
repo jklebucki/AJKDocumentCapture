@@ -21,17 +21,25 @@ public sealed class LoadExtractionArtifactHandlerTests
     public async Task Ollama_request_handler_returns_the_exact_stored_request_without_transforming_it()
     {
         var id = DocumentId.New();
-        var handler = new LoadOllamaRequestArtifactHandler(new ExtractionArtifactBlobStore("{\"messages\":[{\"content\":\"OCR input\"}]}"));
+        var artifactId = Guid.NewGuid();
+        var blobStore = new ExtractionArtifactBlobStore("{\"messages\":[{\"content\":\"OCR input\"}]}");
+        var handler = new LoadOllamaRequestArtifactHandler(blobStore);
 
-        var result = await handler.HandleAsync(id, CancellationToken.None);
+        var result = await handler.HandleAsync(id, artifactId, CancellationToken.None);
 
         Assert.Equal("{\"messages\":[{\"content\":\"OCR input\"}]}", result);
+        Assert.Equal(Path.Combine(id.ToString(), "artifacts", "ollama-requests", $"{artifactId:N}.json"), blobStore.OpenedPath);
     }
 
     private sealed class ExtractionArtifactBlobStore(string content) : IBlobStore
     {
+        public string? OpenedPath { get; private set; }
         public Task DeleteWorkDirectoryAsync(DocumentId documentId, CancellationToken cancellationToken) => throw new NotSupportedException();
-        public Task<Stream> OpenReadAsync(string relativePath, CancellationToken cancellationToken) => Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes(content)));
+        public Task<Stream> OpenReadAsync(string relativePath, CancellationToken cancellationToken)
+        {
+            OpenedPath = relativePath;
+            return Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes(content)));
+        }
         public Task SaveArtifactAsync(DocumentId documentId, string relativePath, Stream content, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<StoredBlob> SaveOriginalAsync(DocumentId documentId, string extension, Stream content, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
