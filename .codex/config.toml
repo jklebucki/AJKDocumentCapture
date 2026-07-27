@@ -1,4 +1,4 @@
 # Project-local configuration deliberately contains no secrets or user model settings.
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
-instructions = ["AGENTS.md"]
+instructions = "AGENTS.md"
