@@ -2,5 +2,6 @@ namespace InvoiceCapture.Application;
 
 public interface IInvoiceExtractionClient
 {
-    Task<ExtractionResult> ExtractAsync(OcrResult ocrResult, CancellationToken cancellationToken);
+    ExtractionRequest PrepareRequest(OcrResult ocrResult);
+    Task<ExtractionResult> ExtractAsync(ExtractionRequest request, CancellationToken cancellationToken);
 }

@@ -2,6 +2,7 @@
 @inject IInvoiceRepository InvoiceRepository
 @inject IProcessingJobRepository ProcessingJobRepository
 @inject LoadExtractionArtifactHandler ExtractionArtifactHandler
+@inject LoadOllamaRequestArtifactHandler OllamaRequestArtifactHandler
 @inject UpdateManualInvoiceHandler ManualInvoiceHandler
 
 <PageTitle>Document details</PageTitle>
@@ -127,6 +128,29 @@
                                         </aside>
                                     }
                                 }
+                                @if (IsOllamaRequest(processingEvent))
+                                {
+                                    <button class="icon-button event-json-button" type="button" @onclick="ToggleOllamaRequestAsync" aria-label="Show exact Ollama request" aria-expanded="@isOllamaRequestVisible" data-tooltip="Show exact Ollama request">
+                                        <img src="icons/bootstrap-icons-1.13.1/file-earmark-code.svg" alt="" aria-hidden="true" />
+                                    </button>
+                                    @if (isOllamaRequestVisible)
+                                    {
+                                        <aside class="artifact-popper" role="dialog" aria-label="Exact Ollama request">
+                                            <div class="artifact-popper-heading">
+                                                <strong>Ollama request · exact /api/chat body</strong>
+                                                <button class="button button-quiet button-small" type="button" @onclick="ToggleOllamaRequestAsync">Close</button>
+                                            </div>
+                                            @if (ollamaRequestJson is not null)
+                                            {
+                                                <pre><code>@ollamaRequestJson</code></pre>
+                                            }
+                                            else
+                                            {
+                                                <p>The Ollama request artifact is not available for this run.</p>
+                                            }
+                                        </aside>
+                                    }
+                                }
                             </span>
                         </li>
                     }
@@ -142,6 +166,8 @@
     private IReadOnlyList<ProcessingEvent> events = [];
     private string? extractionJson;
     private bool isExtractionJsonVisible;
+    private string? ollamaRequestJson;
+    private bool isOllamaRequestVisible;
     private string? invoiceNumber;
     private DateOnly? issueDate;
     private DateOnly? dueDate;
@@ -186,7 +212,19 @@
     private static bool IsOllamaExtraction(ProcessingEvent processingEvent) =>
         processingEvent.Stage == nameof(ProcessingStatus.Extracting) && processingEvent.Kind == "Started";
 
+    private static bool IsOllamaRequest(ProcessingEvent processingEvent) =>
+        processingEvent.Stage == nameof(ProcessingStatus.Extracting) && processingEvent.Kind == "Ollama request sent";
+
     private void ToggleExtractionJson() => isExtractionJsonVisible = !isExtractionJsonVisible;
+
+    private async Task ToggleOllamaRequestAsync()
+    {
+        isOllamaRequestVisible = !isOllamaRequestVisible;
+        if (isOllamaRequestVisible && ollamaRequestJson is null)
+        {
+            ollamaRequestJson = await OllamaRequestArtifactHandler.HandleAsync(new DocumentId(DocumentId), CancellationToken.None);
+        }
+    }
 
     private void LoadManualFields()
     {

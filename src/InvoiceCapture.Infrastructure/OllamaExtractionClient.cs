@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Net.Http.Json;
 using InvoiceCapture.Application;
 using Microsoft.Extensions.Options;
 
@@ -11,7 +10,7 @@ public sealed class OllamaExtractionClient(HttpClient httpClient, IOptions<Ollam
 {
     private const string PromptVersion = "invoice-extraction-comarch-ecod-v4-compact";
 
-    public async Task<ExtractionResult> ExtractAsync(OcrResult ocrResult, CancellationToken cancellationToken)
+    public ExtractionRequest PrepareRequest(OcrResult ocrResult)
     {
         var reduced = Reduce(ocrResult);
         var request = new
@@ -26,13 +25,20 @@ public sealed class OllamaExtractionClient(HttpClient httpClient, IOptions<Ollam
                 new { role = "user", content = $"{OllamaExtractionPrompt.UserTemplate}\n\nOCR input:\n{reduced}" }
             }
         };
-        using var response = await httpClient.PostAsJsonAsync("api/chat", request, cancellationToken);
+        var requestJson = JsonSerializer.Serialize(request);
+        return new ExtractionRequest(requestJson, PromptVersion, options.Value.Model, Hash(requestJson));
+    }
+
+    public async Task<ExtractionResult> ExtractAsync(ExtractionRequest request, CancellationToken cancellationToken)
+    {
+        using var requestContent = new StringContent(request.RequestJson, Encoding.UTF8, "application/json");
+        using var response = await httpClient.PostAsync("api/chat", requestContent, cancellationToken);
         response.EnsureSuccessStatusCode();
         using var body = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(cancellationToken));
-        var content = body.RootElement.GetProperty("message").GetProperty("content").GetString() ?? throw new InvalidDataException("Ollama returned an empty response.");
-        using var canonical = JsonDocument.Parse(content);
+        var responseContent = body.RootElement.GetProperty("message").GetProperty("content").GetString() ?? throw new InvalidDataException("Ollama returned an empty response.");
+        using var canonical = JsonDocument.Parse(responseContent);
         var normalized = JsonSerializer.Serialize(canonical.RootElement);
-        return new ExtractionResult(normalized, PromptVersion, options.Value.Model, Hash(reduced), Hash(normalized));
+        return new ExtractionResult(normalized, request.PromptVersion, request.Model, request.RequestHash, Hash(normalized));
     }
 
     private static string Reduce(OcrResult result) => JsonSerializer.Serialize(new { markdown = result.Markdown, blockIds = result.BlockIds });

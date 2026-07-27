@@ -17,6 +17,17 @@ public sealed class LoadExtractionArtifactHandlerTests
         Assert.Equal("{\"answer\":42}", result);
     }
 
+    [Fact]
+    public async Task Ollama_request_handler_returns_the_exact_stored_request_without_transforming_it()
+    {
+        var id = DocumentId.New();
+        var handler = new LoadOllamaRequestArtifactHandler(new ExtractionArtifactBlobStore("{\"messages\":[{\"content\":\"OCR input\"}]}"));
+
+        var result = await handler.HandleAsync(id, CancellationToken.None);
+
+        Assert.Equal("{\"messages\":[{\"content\":\"OCR input\"}]}", result);
+    }
+
     private sealed class ExtractionArtifactBlobStore(string content) : IBlobStore
     {
         public Task DeleteWorkDirectoryAsync(DocumentId documentId, CancellationToken cancellationToken) => throw new NotSupportedException();

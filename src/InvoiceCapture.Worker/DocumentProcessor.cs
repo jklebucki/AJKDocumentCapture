@@ -39,7 +39,10 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
                     using (var reader = new StreamReader(ocrStream, Encoding.UTF8, leaveOpen: false))
                     {
                         var raw = await reader.ReadToEndAsync(cancellationToken);
-                        var result = await extractionClient.ExtractAsync(new OcrResult(raw, FindMarkdown(raw), []), cancellationToken);
+                        var request = extractionClient.PrepareRequest(new OcrResult(raw, FindMarkdown(raw), []));
+                        await SaveTextAsync(document.Id, "artifacts/ollama-request.json", request.RequestJson, cancellationToken);
+                        await jobs.RecordEventAsync(document.Id, job.Id, "Ollama request sent", nameof(ProcessingStatus.Extracting), "Exact /api/chat request body is available as a protected document artifact.", cancellationToken);
+                        var result = await extractionClient.ExtractAsync(request, cancellationToken);
                         await SaveTextAsync(document.Id, "artifacts/extraction.json", result.CanonicalJson, cancellationToken);
                     }
                     Move(document, ProcessingStatus.Validating);
