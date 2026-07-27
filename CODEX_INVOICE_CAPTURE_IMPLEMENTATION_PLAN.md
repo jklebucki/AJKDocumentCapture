@@ -16,7 +16,7 @@
 - [x] LLM nigdy nie tworzy finalnego XML i nie wykonuje ostatecznych obliczeń księgowych.
 - [ ] Finalny XML generuje deterministyczny kod C# i waliduje go XSD/profilem eksportu.
 - [ ] Zachowuj niezmieniony oryginał; wynikowa para to `document.xml` + `document.optimized.pdf`.
-- [ ] Domyślny profil sprzętowy: **PaddleOCR‑VL CPU**, istniejący `gpt-oss:20b` w Ollama na GPU. Nie rezerwuj równocześnie jednej karty 16 GB przez Paddle/vLLM i Ollama.
+- [x] Domyślny profil sprzętowy: **PaddleOCR‑VL CPU**, istniejący `gpt-oss:20b` w Ollama na GPU. Nie rezerwuj równocześnie jednej karty 16 GB przez Paddle/vLLM i Ollama.
 - [ ] OCR GPU dopuść dopiero po benchmarku lub przy osobnej karcie; profil ma być opcjonalny.
 - [x] Nie uruchamiaj drugiego Ollama. Korzystaj z konfigurowalnego `OLLAMA_BASE_URL` i `OLLAMA_MODEL=gpt-oss:20b`.
 - [x] Nie hardkoduj adresów, sekretów, loginów, nazw hostów ani schematu Comarch bez oficjalnej próbki/XSD.
@@ -223,7 +223,7 @@ CMD ["paddlex","--serve","--pipeline","PaddleOCR-VL"]
 
 - [ ] Po pierwszym działającym buildzie przypnij dokładne wersje `paddleocr`, `paddlex` i transitive lock/constraints; nie zostawiaj nieprzypiętego latest.
 - [x] Zamontuj cache modeli jako volume; pierwszy start może pobierać modele, produkcja ma używać obrazu/cache przygotowanego wcześniej.
-- [ ] Ustaw `Serving.extra.max_num_input_imgs=100` w wygenerowanym pipeline config i zamontuj go; uruchamiaj przez ścieżkę config, nie domyślną nazwę, gdy config zostanie utworzony.
+- [x] Ustaw `Serving.extra.max_num_input_imgs=100` w wygenerowanym pipeline config i zamontuj go; uruchamiaj przez ścieżkę config, nie domyślną nazwę, gdy config zostanie utworzony.
 
 ### 7.3 Opcjonalny profil GPU
 
@@ -234,6 +234,14 @@ CMD ["paddlex","--serve","--pipeline","PaddleOCR-VL"]
 - [ ] Skrypt `scripts/pin-paddle-images.sh` ma pullować wskazane tagi, zapisywać digesty do `.env.lock` i produkcyjnie używać `image@sha256:...`.
 - [ ] Profil GPU musi sprawdzić `nvidia-smi`, CUDA ≥ 12.6 i CC ≥ 8.0.
 - [ ] Na pojedynczej RTX 5060 Ti 16 GB nie uruchamiaj profilu GPU równolegle z rezydentnym `gpt-oss:20b`; wymaga osobnej karty albo jawnego scheduler/lease i pomiaru czasu przełączania modeli.
+
+### 7.4 Profil deweloperski Apple Silicon
+
+- [x] Zachowaj pełny pipeline w `paddleocr-vl-api`: layout działa w kontenerze, a wyłącznie etap VLM jest delegowany do hostowego MLX-VLM/Metal.
+- [x] `dev-up.sh` wykrywa `Darwin/arm64`, uruchamia przypięty MLX-VLM jako LaunchAgent i montuje osobny config; `PADDLEOCR_DEV_ACCELERATOR=cpu|mlx` pozwala wymusić profil.
+- [x] Bazowy `compose.yml` i obraz pozostają produkcyjnym profilem Intel/x64 CPU bez zależności od MLX.
+- [x] Benchmark M3 na tej samej oficjalnej próbce: Paddle CPU `327,499 s`, MLX concurrency 4 `19,384 s` (rozgrzany `15,504 s`); concurrency 8 odrzucone z powodu różnic OCR.
+- [ ] Przed wdrożeniem wykonaj osobny benchmark i dobór liczby wątków na docelowym serwerze Intel x64.
 
 **Gate OCR:** przetwórz minimum: cyfrowy PDF, skan, zdjęcie paragonu, obrócony dokument, fakturę z tabelą; zapisz golden JSON bez danych osobowych.
 

@@ -6,5 +6,6 @@
 4. [Artefakty i eksport](04-export-artifacts.md)
 5. [Lokalny kontener i test przepływu](05-local-container-test.md)
 6. [Widok operacyjny i diagnostyka](06-operational-ui.md)
+7. [Profile wykonawcze PaddleOCR-VL](07-paddleocr-runtime-profiles.md)
 
 Diagramy pokazują aktualne granice odpowiedzialności. Punkty niezrealizowane pozostają odznaczone w planie wykonawczym.

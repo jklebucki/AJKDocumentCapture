@@ -23,7 +23,7 @@ flowchart LR
 
 ## Szybki start
 
-Wymagania: .NET SDK 10, Docker Desktop oraz dostępny Ollama z modelem `gpt-oss:20b`.
+Wymagania: .NET SDK 10, Docker Desktop, Python 3.9–3.13 na Apple Silicon oraz dostępny Ollama z modelem `gpt-oss:20b`.
 
 ```bash
 cp deploy/.env.example deploy/.env
@@ -31,9 +31,9 @@ cp deploy/.env.example deploy/.env
 ./scripts/dev-up.sh
 ```
 
-Pierwszy start pobiera model PaddleOCR-VL do named volume i może potrwać kilka minut. Aplikacja nasłuchuje domyślnie tylko lokalnie na `http://127.0.0.1:8088`; użyj `WEB_PORT`, aby zmienić port.
+Na macOS/Apple Silicon skrypt automatycznie uruchamia hostowy MLX-VLM z Metal i kontener pełnego pipeline Paddle; pozostałe platformy używają kontenera CPU. Pierwszy start instaluje przypięty MLX-VLM i pobiera modele, więc może potrwać kilka minut. Profil można wymusić przez `PADDLEOCR_DEV_ACCELERATOR=cpu|mlx`.
 
-Po `./scripts/dev-up.sh` lokalnie uruchomione Web/Worker używają `http://127.0.0.1:8090` dla PaddleOCR i `http://192.168.21.14:11434` dla Ollama. Obrazy kontenerowe publikują kod ReadyToRun dla `linux-x64` lub `linux-arm64`.
+Aplikacja nasłuchuje na `http://127.0.0.1:8088`; PaddleOCR na `http://127.0.0.1:8090`, a Ollama na `http://192.168.21.14:11434`. Obrazy Web/Worker publikują ReadyToRun dla `linux-x64` lub `linux-arm64`. Profil produkcyjny pozostaje pełnym kontenerem Intel CPU. [Architektura i benchmark OCR](docs/07-paddleocr-runtime-profiles.md).
 
 ## Weryfikacja
 
