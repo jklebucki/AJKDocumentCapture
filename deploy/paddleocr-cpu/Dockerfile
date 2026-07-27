@@ -5,6 +5,7 @@ RUN python -m pip install --upgrade pip \
  && python -m pip install "paddlepaddle==3.2.1" -i https://www.paddlepaddle.org.cn/packages/stable/cpu/ \
  && python -m pip install "paddleocr[doc-parser]==3.7.0" "paddlex[ocr]==3.7.2" \
  && paddlex --install serving
+COPY pipeline_config.yml /opt/paddleocr/pipeline_config.yml
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 CMD curl -fsS http://localhost:8080/health || exit 1
-CMD ["paddlex", "--serve", "--pipeline", "PaddleOCR-VL-1.6", "--device", "cpu"]
+CMD ["paddlex", "--serve", "--pipeline", "/opt/paddleocr/pipeline_config.yml", "--device", "cpu"]

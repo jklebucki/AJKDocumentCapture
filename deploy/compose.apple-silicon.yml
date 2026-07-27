@@ -1,0 +1,13 @@
+services:
+  paddleocr-vl-api:
+    command:
+      - paddlex
+      - --serve
+      - --pipeline
+      - /opt/paddleocr/pipeline_config.yml
+      - --device
+      - cpu
+    volumes:
+      - ./paddleocr-apple-silicon/pipeline_config.yml:/opt/paddleocr/pipeline_config.yml:ro
+    extra_hosts:
+      - host.docker.internal:host-gateway
