@@ -31,16 +31,20 @@ button { cursor: pointer; }
 .app-shell { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; overflow: hidden; }
 .app-header { z-index: 10; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 94%, transparent); }
 .header-content { position: relative; display: flex; align-items: center; justify-content: space-between; max-width: 1560px; min-height: 64px; padding: 0 28px; margin: 0 auto; }
+.brand-link { display: inline-flex; border-radius: 7px; }
+.brand-link:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
 .app-logo { display: block; width: 154px; height: auto; }
-.logo-trigger { position: relative; padding: 0; border: 0; border-radius: 7px; background: transparent; }
-.logo-trigger:hover, .logo-trigger:focus-visible { background: var(--info-bg); }
-.logo-trigger::after { position: absolute; z-index: 30; top: calc(100% + 8px); left: 0; width: max-content; padding: 6px 8px; border-radius: 6px; color: #fff; background: #1f2937; content: attr(data-tooltip); font-size: .72rem; font-weight: 650; opacity: 0; pointer-events: none; transform: translateY(-3px); transition: opacity .15s ease, transform .15s ease; }
-.logo-trigger:hover::after, .logo-trigger:focus-visible::after { opacity: 1; transform: translateY(0); }
+.header-prompt-button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; margin-left: auto; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--brand-deep); background: var(--surface); font-size: .82rem; font-weight: 750; line-height: 1; }
+.header-prompt-button:hover { border-color: var(--brand); background: var(--info-bg); }
+.header-prompt-button:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+.header-prompt-button img { width: 15px; height: 15px; }
+.header-prompt-button[aria-expanded="true"] { border-color: var(--brand); color: var(--surface); background: var(--brand); }
+.header-prompt-button[aria-expanded="true"] img { filter: brightness(0) invert(1); }
 .header-popper { position: absolute; z-index: 35; top: calc(100% + 9px); left: 28px; width: min(740px, calc(100vw - 32px)); overflow: hidden; border: 1px solid var(--line-strong); border-radius: 10px; color: var(--text); background: var(--surface); box-shadow: 0 12px 32px rgb(15 23 42 / 22%); }
 .header-popper h2 { padding: 12px 14px 0; margin: 0; font-size: .77rem; }
 .header-popper p { padding: 12px 14px 0; margin: 0; color: var(--muted); font-size: .78rem; line-height: 1.45; }
 .header-popper pre { max-height: 220px; padding: 10px 14px 14px; margin: 0; overflow: auto; color: #334155; background: #fbfcff; font-size: .73rem; line-height: 1.45; white-space: pre-wrap; }
-nav { display: flex; align-items: center; gap: 6px; }
+nav { display: flex; align-items: center; gap: 6px; margin-left: 10px; }
 nav a { padding: 8px 11px; border-radius: 7px; color: var(--muted); font-size: .88rem; font-weight: 650; text-decoration: none; }
 nav a:hover, nav a:focus-visible { color: var(--brand-deep); background: var(--info-bg); }
 .app-content { min-height: 0; overflow: auto; overscroll-behavior: contain; }
@@ -165,6 +169,10 @@ code { color: #46546c; font-family: "SFMono-Regular", Consolas, monospace; font-
 
 @media (max-width: 720px) {
     .header-content, .footer-content, .page-shell { padding-right: 16px; padding-left: 16px; }
+    .app-logo { width: 128px; }
+    .header-prompt-button { padding: 9px; }
+    .header-prompt-button span { display: none; }
+    .header-popper { left: 16px; }
     .page-shell { padding-top: 28px; }
     .queue-page { padding-right: 16px; padding-left: 16px; }
     .page-heading { flex-direction: column; gap: 15px; }

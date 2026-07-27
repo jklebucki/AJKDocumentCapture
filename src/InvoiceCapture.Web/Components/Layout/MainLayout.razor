@@ -4,12 +4,16 @@
 <div class="app-shell">
     <header class="app-header">
         <div class="header-content">
-            <button class="logo-trigger" type="button" @onclick="TogglePrompt" aria-label="Invoice Capture — show Ollama prompt" aria-expanded="@isPromptVisible" data-tooltip="Show Ollama prompt">
+            <a class="brand-link" href="/documents" aria-label="Invoice Capture — open queue">
                 <img src="logo.svg" alt="Invoice Capture" class="app-logo" />
+            </a>
+            <button class="header-prompt-button" type="button" @onclick="TogglePrompt" aria-expanded="@isPromptVisible" aria-controls="ollama-prompt-preview">
+                <img src="icons/bootstrap-icons-1.13.1/file-earmark-code.svg" alt="" aria-hidden="true" />
+                <span>Prompt Ollama</span>
             </button>
             @if (isPromptVisible && prompt is not null)
             {
-                <aside class="header-popper" role="dialog" aria-label="Ollama prompt preview">
+                <aside id="ollama-prompt-preview" class="header-popper" role="dialog" aria-label="Ollama prompt preview">
                     <div class="artifact-popper-heading">
                         <strong>Ollama prompt · @prompt.Model</strong>
                         <button class="button button-quiet button-small" type="button" @onclick="TogglePrompt">Close</button>
