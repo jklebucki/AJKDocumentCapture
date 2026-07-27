@@ -1,5 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @inject OllamaPromptPreviewService OllamaPromptPreviewService
+@inject IJSRuntime JS
 
 <div class="app-shell">
     <header class="app-header">
@@ -13,17 +14,33 @@
             </button>
             @if (isPromptVisible && prompt is not null)
             {
-                <aside id="ollama-prompt-preview" class="header-popper" role="dialog" aria-label="Ollama prompt preview">
-                    <div class="artifact-popper-heading">
-                        <strong>Ollama prompt · @prompt.Model</strong>
-                        <button class="button button-quiet button-small" type="button" @onclick="TogglePrompt">Close</button>
-                    </div>
-                    <p>This preview excludes document OCR and shows only the compact instructions sent with each request.</p>
-                    <h2>System</h2>
-                    <pre><code>@prompt.SystemInstructions</code></pre>
-                    <h2>User template</h2>
-                    <pre><code>@prompt.UserTemplate</code></pre>
-                </aside>
+                <div class="modal-backdrop" @onclick="ClosePrompt">
+                    <section id="ollama-prompt-preview" class="prompt-modal" role="dialog" aria-modal="true" aria-labelledby="ollama-prompt-title" @onclick:stopPropagation="true" @onkeydown="HandlePromptKeyDown" tabindex="-1">
+                        <header class="prompt-modal-header">
+                            <div>
+                                <p class="eyebrow">Global template</p>
+                                <h2 id="ollama-prompt-title">Ollama prompt · @prompt.Model</h2>
+                            </div>
+                            <div class="prompt-modal-actions">
+                                <button class="icon-button" type="button" @onclick="CopyPromptAsync" aria-label="Copy prompt content" data-tooltip="Copy prompt">
+                                    <img src="icons/bootstrap-icons-1.13.1/clipboard.svg" alt="" aria-hidden="true" />
+                                </button>
+                                <button class="button button-quiet button-small" type="button" @onclick="ClosePrompt">Close</button>
+                            </div>
+                        </header>
+                        <div class="prompt-modal-body">
+                            <p>This is the compact template. The exact prompt for a document, including OCR data, is available from its <strong>Ollama request sent</strong> log entry.</p>
+                            @if (copyStatus is not null)
+                            {
+                                <p class="inline-success prompt-copy-status" role="status" aria-live="polite">@copyStatus</p>
+                            }
+                            <h3>System</h3>
+                            <pre><code>@prompt.SystemInstructions</code></pre>
+                            <h3>User template</h3>
+                            <pre><code>@prompt.UserTemplate</code></pre>
+                        </div>
+                    </section>
+                </div>
             }
             <nav aria-label="Primary navigation">
                 <a href="/documents">Queue</a>
@@ -47,10 +64,42 @@
 @code {
     private OllamaPromptPreview? prompt;
     private bool isPromptVisible;
+    private string? copyStatus;
 
     protected override void OnInitialized() => prompt = OllamaPromptPreviewService.GetPreview();
 
-    private void TogglePrompt() => isPromptVisible = !isPromptVisible;
+    private void TogglePrompt()
+    {
+        isPromptVisible = !isPromptVisible;
+        copyStatus = null;
+    }
+
+    private void ClosePrompt()
+    {
+        isPromptVisible = false;
+        copyStatus = null;
+    }
+
+    private async Task CopyPromptAsync()
+    {
+        if (prompt is null) { return; }
+        try
+        {
+            await JS.InvokeVoidAsync("invoiceCapture.copyText", PromptText(prompt));
+            copyStatus = "Prompt copied to the clipboard.";
+        }
+        catch (JSException)
+        {
+            copyStatus = "The browser could not copy the prompt. Select the text and copy it manually.";
+        }
+    }
+
+    private void HandlePromptKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape") { ClosePrompt(); }
+    }
+
+    private static string PromptText(OllamaPromptPreview preview) => $"Ollama prompt · {preview.Model}\n\nSystem\n{preview.SystemInstructions}\n\nUser template\n{preview.UserTemplate}";
 }
 
 <div id="blazor-error-ui" data-nosnippet>

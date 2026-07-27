@@ -40,10 +40,18 @@ button { cursor: pointer; }
 .header-prompt-button img { width: 15px; height: 15px; }
 .header-prompt-button[aria-expanded="true"] { border-color: var(--brand); color: var(--surface); background: var(--brand); }
 .header-prompt-button[aria-expanded="true"] img { filter: brightness(0) invert(1); }
-.header-popper { position: absolute; z-index: 35; top: calc(100% + 9px); left: 28px; width: min(740px, calc(100vw - 32px)); overflow: hidden; border: 1px solid var(--line-strong); border-radius: 10px; color: var(--text); background: var(--surface); box-shadow: 0 12px 32px rgb(15 23 42 / 22%); }
-.header-popper h2 { padding: 12px 14px 0; margin: 0; font-size: .77rem; }
-.header-popper p { padding: 12px 14px 0; margin: 0; color: var(--muted); font-size: .78rem; line-height: 1.45; }
-.header-popper pre { max-height: 220px; padding: 10px 14px 14px; margin: 0; overflow: auto; color: #334155; background: #fbfcff; font-size: .73rem; line-height: 1.45; white-space: pre-wrap; }
+.modal-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 24px; background: rgb(15 23 42 / 52%); }
+.prompt-modal { display: flex; width: min(880px, 100%); max-height: calc(100dvh - 48px); flex-direction: column; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 14px; color: var(--text); background: var(--surface); box-shadow: 0 24px 64px rgb(15 23 42 / 36%); }
+.prompt-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 18px 20px 15px; border-bottom: 1px solid var(--line); background: var(--surface-subtle); }
+.prompt-modal-header .eyebrow { margin-bottom: 4px; }
+.prompt-modal-header h2 { margin: 0; font-size: 1.05rem; }
+.prompt-modal-actions { display: flex; align-items: center; gap: 7px; }
+.prompt-modal-actions .icon-button { margin: 0; }
+.prompt-modal-body { padding: 20px; overflow: auto; }
+.prompt-modal-body > p { margin-bottom: 18px; color: var(--muted); font-size: .86rem; line-height: 1.5; }
+.prompt-modal-body h3 { margin: 18px 0 8px; font-size: .8rem; }
+.prompt-modal-body pre { max-height: 280px; padding: 14px; margin: 0; overflow: auto; border: 1px solid var(--line); border-radius: 8px; color: #334155; background: #fbfcff; font-size: .78rem; line-height: 1.5; white-space: pre-wrap; }
+.prompt-copy-status { margin: 0 0 14px; }
 nav { display: flex; align-items: center; gap: 6px; margin-left: 10px; }
 nav a { padding: 8px 11px; border-radius: 7px; color: var(--muted); font-size: .88rem; font-weight: 650; text-decoration: none; }
 nav a:hover, nav a:focus-visible { color: var(--brand-deep); background: var(--info-bg); }
@@ -172,7 +180,8 @@ code { color: #46546c; font-family: "SFMono-Regular", Consolas, monospace; font-
     .app-logo { width: 128px; }
     .header-prompt-button { padding: 9px; }
     .header-prompt-button span { display: none; }
-    .header-popper { left: 16px; }
+    .modal-backdrop { padding: 16px; }
+    .prompt-modal { max-height: calc(100dvh - 32px); }
     .page-shell { padding-top: 28px; }
     .queue-page { padding-right: 16px; padding-left: 16px; }
     .page-heading { flex-direction: column; gap: 15px; }
