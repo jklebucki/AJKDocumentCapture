@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
 using System.Net;
+using System.Globalization;
 using InvoiceCapture.Application;
 using InvoiceCapture.Domain;
 
@@ -39,7 +40,7 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
                     using (var reader = new StreamReader(ocrStream, Encoding.UTF8, leaveOpen: false))
                     {
                         var raw = await reader.ReadToEndAsync(cancellationToken);
-                        var request = extractionClient.PrepareRequest(new OcrResult(raw, FindMarkdown(raw), []));
+                        var request = extractionClient.PrepareRequest(new OcrResult(raw, FindMarkdown(raw), FindBlockIds(raw)));
                         var requestArtifactId = Guid.NewGuid();
                         await SaveTextAsync(document.Id, $"artifacts/ollama-requests/{requestArtifactId:N}.json", request.RequestJson, cancellationToken);
                         await jobs.RecordEventAsync(document.Id, job.Id, "Ollama request sent", nameof(ProcessingStatus.Extracting), $"ollama-request:{requestArtifactId:N}", cancellationToken);
@@ -87,7 +88,13 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
         await using var extractionStream = await blobStore.OpenReadAsync(Path.Combine(document.Id.ToString(), "artifacts", "extraction.json"), cancellationToken);
         using var json = await JsonDocument.ParseAsync(extractionStream, cancellationToken: cancellationToken);
         var root = json.RootElement;
-        var type = root.TryGetProperty("documentType", out var typeNode) && Enum.TryParse<DocumentType>(typeNode.GetString(), true, out var parsedType) ? parsedType : DocumentType.Unknown;
+        var type = ParseDocumentType(root);
+        if (root.TryGetProperty("invoice", out var invoice) && invoice.ValueKind == JsonValueKind.Object)
+        {
+            ApplyFactExtraction(document, root, invoice, type);
+            return;
+        }
+
         if (!root.TryGetProperty("comarchEcodKsef", out var comarch) || comarch.ValueKind != JsonValueKind.Object)
         {
             ApplyLegacyExtraction(document, root, type);
@@ -125,6 +132,113 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
             vatSummaries,
             totals);
         document.SetValidationIssues(validator.Validate(document));
+    }
+
+    private void ApplyFactExtraction(InvoiceDocument document, JsonElement root, JsonElement invoice, DocumentType type)
+    {
+        var summary = GetObject(invoice, "summary");
+        document.ApplyExtraction(
+            type,
+            ParseParty(GetObject(invoice, "seller")),
+            ParseParty(GetObject(invoice, "buyer")),
+            GetString(invoice, "invoiceNumber"),
+            ParseDate(GetString(invoice, "invoiceDate")),
+            null,
+            GetString(invoice, "currency") ?? string.Empty,
+            null,
+            null,
+            ParseFactLines(invoice),
+            ParseFactVatSummaries(summary),
+            ParseFactTotals(summary));
+
+        var issues = validator.Validate(document).Concat(ParseModelIssues(root)).ToList();
+        if (string.Equals(GetString(root, "status"), "needs_review", StringComparison.Ordinal) && !issues.Any(issue => issue.Severity == ValidationSeverity.Error))
+        {
+            issues.Add(new ValidationIssue("model.needsReview", ValidationSeverity.Error, "invoice", "Extraction requires operator review."));
+        }
+
+        document.SetValidationIssues(issues);
+    }
+
+    private static DocumentType ParseDocumentType(JsonElement root)
+    {
+        var value = GetString(root, "documentType");
+        return value switch
+        {
+            "invoice" => DocumentType.Invoice,
+            "receipt_with_nip" => DocumentType.ReceiptWithNip,
+            "correction" => DocumentType.Correction,
+            _ when Enum.TryParse<DocumentType>(value, true, out var parsed) => parsed,
+            _ => DocumentType.Unknown
+        };
+    }
+
+    private static InvoiceParty? ParseParty(JsonElement party)
+    {
+        if (party.ValueKind != JsonValueKind.Object) { return null; }
+        return new InvoiceParty(GetString(party, "name"), GetString(party, "taxId"), GetString(party, "streetAndNumber"));
+    }
+
+    private static IReadOnlyList<InvoiceLine> ParseFactLines(JsonElement invoice)
+    {
+        if (!invoice.TryGetProperty("lines", out var lines) || lines.ValueKind != JsonValueKind.Array) { return []; }
+        var parsed = new List<InvoiceLine>();
+        foreach (var line in lines.EnumerateArray())
+        {
+            var description = GetString(line, "description");
+            var quantity = ParseDecimal(GetString(line, "quantity"));
+            var netAmount = ParseDecimal(GetString(line, "netAmount"));
+            var vatRate = ParseDecimal(GetString(line, "taxRate"));
+            var vatAmount = ParseDecimal(GetString(line, "taxAmount"));
+            var grossAmount = ParseDecimal(GetString(line, "grossAmount"));
+            if (description is null || quantity is null || netAmount is null || vatRate is null || vatAmount is null || grossAmount is null) { continue; }
+            parsed.Add(new InvoiceLine(description, GetString(line, "unit"), quantity.Value, netAmount.Value, vatRate.Value, vatAmount.Value, grossAmount.Value, []));
+        }
+
+        return parsed;
+    }
+
+    private static IReadOnlyList<VatSummary> ParseFactVatSummaries(JsonElement summary)
+    {
+        if (!summary.TryGetProperty("taxLines", out var taxLines) || taxLines.ValueKind != JsonValueKind.Array) { return []; }
+        var parsed = new List<VatSummary>();
+        foreach (var taxLine in taxLines.EnumerateArray())
+        {
+            var rate = ParseDecimal(GetString(taxLine, "taxRate"));
+            var netAmount = ParseDecimal(GetString(taxLine, "taxableAmount"));
+            var vatAmount = ParseDecimal(GetString(taxLine, "taxAmount"));
+            var grossAmount = ParseDecimal(GetString(taxLine, "grossAmount"));
+            if (rate is null || netAmount is null || vatAmount is null || grossAmount is null) { continue; }
+            parsed.Add(new VatSummary(rate.Value, netAmount.Value, vatAmount.Value, grossAmount.Value));
+        }
+
+        return parsed;
+    }
+
+    private static InvoiceTotals? ParseFactTotals(JsonElement summary)
+    {
+        var netAmount = ParseDecimal(GetString(summary, "totalNetAmount"));
+        var vatAmount = ParseDecimal(GetString(summary, "totalTaxAmount"));
+        var grossAmount = ParseDecimal(GetString(summary, "totalGrossAmount"));
+        return netAmount is not null && vatAmount is not null && grossAmount is not null
+            ? new InvoiceTotals(netAmount.Value, vatAmount.Value, grossAmount.Value)
+            : null;
+    }
+
+    private static IReadOnlyList<ValidationIssue> ParseModelIssues(JsonElement root)
+    {
+        if (!root.TryGetProperty("issues", out var issues) || issues.ValueKind != JsonValueKind.Array) { return []; }
+        var parsed = new List<ValidationIssue>();
+        foreach (var issue in issues.EnumerateArray())
+        {
+            var code = GetString(issue, "code");
+            var message = GetString(issue, "message");
+            if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(message)) { continue; }
+            var severity = string.Equals(GetString(issue, "severity"), "error", StringComparison.Ordinal) ? ValidationSeverity.Error : ValidationSeverity.Warning;
+            parsed.Add(new ValidationIssue($"model.{code}", severity, GetString(issue, "path") ?? "invoice", message));
+        }
+
+        return parsed;
     }
 
     private static void ApplyComarchXmlExtraction(InvoiceDocument document, JsonElement root, DocumentType type)
@@ -294,6 +408,15 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
             : decimal.TryParse(node.GetString(), out value) ? value : null;
     }
 
+    private static decimal? ParseDecimal(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) { return null; }
+        var normalized = value.Replace(" ", string.Empty, StringComparison.Ordinal).Replace("\u00A0", string.Empty, StringComparison.Ordinal).Replace(',', '.');
+        return decimal.TryParse(normalized, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
+    }
+
+    private static DateOnly? ParseDate(string? value) => DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed) ? parsed : null;
+
     private static string? Value(XElement? element, string name) => element?.Element(name)?.Value;
 
     private static decimal? GetDecimal(XElement? element, string name) => decimal.TryParse(Value(element, name), out var value) ? value : null;
@@ -343,6 +466,35 @@ public sealed class DocumentProcessor(IInvoiceRepository invoices, IProcessingJo
         }
 
         return string.Empty;
+    }
+
+    private static IReadOnlyList<string> FindBlockIds(string raw)
+    {
+        using var document = JsonDocument.Parse(raw);
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        FindBlockIds(document.RootElement, ids);
+        return ids.ToArray();
+    }
+
+    private static void FindBlockIds(JsonElement element, ISet<string> ids)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                if (property.Name is "blockId" or "block_id" && property.Value.ValueKind == JsonValueKind.String)
+                {
+                    var value = property.Value.GetString();
+                    if (!string.IsNullOrWhiteSpace(value)) { ids.Add(value); }
+                }
+
+                FindBlockIds(property.Value, ids);
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray()) { FindBlockIds(item, ids); }
+        }
     }
 
     private static bool IsRetryableProviderFailure(HttpRequestException exception) =>

@@ -24,6 +24,9 @@ public sealed class OllamaExtractionClientTests
         var body = Assert.IsType<string>(handler.Body);
         using var json = JsonDocument.Parse(body);
         Assert.Equal("gpt-oss:20b", json.RootElement.GetProperty("model").GetString());
+        Assert.Equal("medium", json.RootElement.GetProperty("think").GetString());
+        Assert.True(json.RootElement.GetProperty("format").GetProperty("properties").TryGetProperty("invoice", out _));
+        Assert.False(json.RootElement.GetProperty("format").GetProperty("properties").TryGetProperty("comarchEcodKsef", out _));
         Assert.Contains("Invoice no. FV/1", json.RootElement.GetProperty("messages")[1].GetProperty("content").GetString());
         Assert.Contains("block-7", json.RootElement.GetProperty("messages")[1].GetProperty("content").GetString());
     }

@@ -11,6 +11,7 @@ public sealed class InvoiceValidator : IInvoiceValidator
         var issues = new List<ValidationIssue>();
         if (string.IsNullOrWhiteSpace(document.InvoiceNumber)) { issues.Add(new("required.invoiceNumber", ValidationSeverity.Error, "invoiceNumber", "Invoice number is required.")); }
         if (document.IssueDate is null) { issues.Add(new("required.issueDate", ValidationSeverity.Error, "issueDate", "Issue date is required.")); }
+        if (string.IsNullOrWhiteSpace(document.Currency)) { issues.Add(new("required.currency", ValidationSeverity.Error, "currency", "Invoice currency is required.")); }
         if (string.IsNullOrWhiteSpace(document.Seller?.Nip)) { issues.Add(new("required.sellerNip", ValidationSeverity.Error, "seller.nip", "Seller NIP is required.")); }
         else if (!IsValidPolishNip(document.Seller.Nip)) { issues.Add(new("nip.checksum", ValidationSeverity.Error, "seller.nip", "Seller NIP checksum is invalid.")); }
         if (!string.IsNullOrWhiteSpace(document.BankAccount) && !IsValidIban(document.BankAccount)) { issues.Add(new("iban.checksum", ValidationSeverity.Warning, "bankAccount", "Bank account IBAN checksum is invalid.")); }

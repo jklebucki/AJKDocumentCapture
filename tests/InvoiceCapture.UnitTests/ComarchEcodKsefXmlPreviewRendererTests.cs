@@ -6,6 +6,30 @@ namespace InvoiceCapture.UnitTests;
 public sealed class ComarchEcodKsefXmlPreviewRendererTests
 {
     [Fact]
+    public void Render_maps_normalized_facts_to_ordered_comarch_elements()
+    {
+        using var extraction = JsonDocument.Parse(NormalizedExtraction);
+
+        var result = ComarchEcodKsefXmlPreviewRenderer.Render(extraction.RootElement);
+
+        Assert.Null(result.Message);
+        Assert.Contains("<InvoiceNumber>FV/1</InvoiceNumber>", result.Xml, StringComparison.Ordinal);
+        Assert.Contains("<KSEFDocumentNumber>7822275815-20260701-617877C0001A-CB</KSEFDocumentNumber>", result.Xml, StringComparison.Ordinal);
+        Assert.Contains("<Tax-Summary>", result.Xml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Render_does_not_substitute_a_ksef_number_for_a_missing_invoice_number()
+    {
+        using var extraction = JsonDocument.Parse(NormalizedExtraction.Replace("\"invoiceNumber\":\"FV/1\"", "\"invoiceNumber\":null", StringComparison.Ordinal));
+
+        var result = ComarchEcodKsefXmlPreviewRenderer.Render(extraction.RootElement);
+
+        Assert.Null(result.Xml);
+        Assert.Contains("invoiceNumber", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Render_creates_the_base_ecod_ksef_xml_for_a_complete_extraction()
     {
         using var extraction = JsonDocument.Parse(CompleteExtraction);
@@ -70,6 +94,20 @@ public sealed class ComarchEcodKsefXmlPreviewRendererTests
             ]}
           ]}
         ]}
+      }
+    }
+    """;
+
+    private const string NormalizedExtraction = """
+    {
+      "status":"ready", "documentType":"invoice", "profile":"comarch-ecod-ksef-7.77", "issues":[], "evidence":[],
+      "invoice":{
+        "invoiceNumber":"FV/1", "invoiceDate":"2026-07-26", "salesDate":null, "invoicingPeriod":null, "currency":"PLN",
+        "ksefDocumentNumber":"7822275815-20260701-617877C0001A-CB", "documentFunctionCode":"O",
+        "buyer":{"taxId":"5260250274","vatPrefix":"PL","name":"Buyer","streetAndNumber":"Main 1","postalCode":null,"city":null,"country":"PL","email":null,"phone":null},
+        "seller":{"taxId":"5260250274","vatPrefix":"PL","name":"Seller","streetAndNumber":"Main 2","postalCode":null,"city":null,"country":"PL","email":null,"phone":null},
+        "lines":[],
+        "summary":{"totalLines":0,"totalNetAmount":"100.00","totalTaxAmount":"23.00","totalGrossAmount":"123.00","taxLines":[{"taxRate":"23","taxCategoryCode":null,"taxableAmount":"100.00","taxAmount":"23.00","grossAmount":"123.00"}]}
       }
     }
     """;

@@ -8,7 +8,7 @@ namespace InvoiceCapture.Infrastructure;
 
 public sealed class OllamaExtractionClient(HttpClient httpClient, IOptions<OllamaOptions> options) : IInvoiceExtractionClient
 {
-    private const string PromptVersion = "invoice-extraction-comarch-ecod-v4-compact";
+    private const string PromptVersion = "invoice-facts-comarch-ecod-v5";
 
     public ExtractionRequest PrepareRequest(OcrResult ocrResult)
     {
@@ -17,6 +17,7 @@ public sealed class OllamaExtractionClient(HttpClient httpClient, IOptions<Ollam
         {
             model = options.Value.Model,
             stream = false,
+            think = "medium",
             options = new { temperature = 0 },
             format = InvoiceSchema.RootElement,
             messages = new[]
@@ -48,28 +49,71 @@ public sealed class OllamaExtractionClient(HttpClient httpClient, IOptions<Ollam
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "documentType": { "type": "string" },
-        "sourceBlockIds": { "type": "array", "items": { "type": "string" } },
-        "comarchEcodKsef": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "profile": { "enum": ["comarch-ecod-invoice-7.77", "comarch-ecod-correction-7.77", "comarch-ecod-ksef-7.77", "comarch-ecod-ksef-correction-7.77"] },
-            "xml": { "$ref": "#/$defs/xmlNode" }
-          },
-          "required": ["profile", "xml"]
-        }
+        "status": { "enum": ["ready", "needs_review"] },
+        "documentType": { "enum": ["invoice", "receipt_with_nip", "correction", "unknown"] },
+        "profile": { "enum": ["unknown", "comarch-ecod-invoice-7.77", "comarch-ecod-correction-7.77", "comarch-ecod-ksef-7.77", "comarch-ecod-ksef-correction-7.77"] },
+        "invoice": { "$ref": "#/$defs/invoice" },
+        "issues": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
       },
-      "required": ["documentType", "sourceBlockIds", "comarchEcodKsef"],
+      "required": ["status", "documentType", "profile", "invoice", "issues", "evidence"],
       "$defs": {
-        "xmlNode": {
+        "party": {
           "type": "object", "additionalProperties": false,
           "properties": {
-            "name": { "type": "string" },
-            "value": { "type": ["string", "null"] },
-            "children": { "type": "array", "items": { "$ref": "#/$defs/xmlNode" } }
+            "taxId": { "type": ["string", "null"] }, "vatPrefix": { "type": ["string", "null"] }, "name": { "type": ["string", "null"] },
+            "streetAndNumber": { "type": ["string", "null"] }, "postalCode": { "type": ["string", "null"] }, "city": { "type": ["string", "null"] },
+            "country": { "type": ["string", "null"] }, "email": { "type": ["string", "null"] }, "phone": { "type": ["string", "null"] }
           },
-          "required": ["name", "value", "children"]
+          "required": ["taxId", "vatPrefix", "name", "streetAndNumber", "postalCode", "city", "country", "email", "phone"]
+        },
+        "line": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "lineNumber": { "type": ["integer", "null"] }, "description": { "type": ["string", "null"] }, "quantity": { "type": ["string", "null"] },
+            "unit": { "type": ["string", "null"] }, "unitNetPrice": { "type": ["string", "null"] }, "taxRate": { "type": ["string", "null"] },
+            "netAmount": { "type": ["string", "null"] }, "taxAmount": { "type": ["string", "null"] }, "grossAmount": { "type": ["string", "null"] }
+          },
+          "required": ["lineNumber", "description", "quantity", "unit", "unitNetPrice", "taxRate", "netAmount", "taxAmount", "grossAmount"]
+        },
+        "taxLine": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "taxRate": { "type": ["string", "null"] }, "taxCategoryCode": { "type": ["string", "null"] }, "taxableAmount": { "type": ["string", "null"] },
+            "taxAmount": { "type": ["string", "null"] }, "grossAmount": { "type": ["string", "null"] }
+          },
+          "required": ["taxRate", "taxCategoryCode", "taxableAmount", "taxAmount", "grossAmount"]
+        },
+        "summary": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "totalLines": { "type": ["integer", "null"] }, "totalNetAmount": { "type": ["string", "null"] }, "totalTaxAmount": { "type": ["string", "null"] },
+            "totalGrossAmount": { "type": ["string", "null"] }, "taxLines": { "type": "array", "items": { "$ref": "#/$defs/taxLine" } }
+          },
+          "required": ["totalLines", "totalNetAmount", "totalTaxAmount", "totalGrossAmount", "taxLines"]
+        },
+        "invoice": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "invoiceNumber": { "type": ["string", "null"] }, "invoiceDate": { "type": ["string", "null"] }, "salesDate": { "type": ["string", "null"] },
+            "invoicingPeriod": { "type": ["string", "null"] }, "currency": { "type": ["string", "null"] }, "ksefDocumentNumber": { "type": ["string", "null"] },
+            "documentFunctionCode": { "enum": ["O", "C", "D", "R", null] }, "seller": { "$ref": "#/$defs/party" }, "buyer": { "$ref": "#/$defs/party" },
+            "lines": { "type": "array", "items": { "$ref": "#/$defs/line" } }, "summary": { "$ref": "#/$defs/summary" }
+          },
+          "required": ["invoiceNumber", "invoiceDate", "salesDate", "invoicingPeriod", "currency", "ksefDocumentNumber", "documentFunctionCode", "seller", "buyer", "lines", "summary"]
+        },
+        "issue": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "severity": { "enum": ["warning", "error"] }, "code": { "type": "string" }, "path": { "type": "string" }, "message": { "type": "string" },
+            "sourceBlockIds": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["severity", "code", "path", "message", "sourceBlockIds"]
+        },
+        "evidence": {
+          "type": "object", "additionalProperties": false,
+          "properties": { "path": { "type": "string" }, "quote": { "type": "string" }, "sourceBlockIds": { "type": "array", "items": { "type": "string" } } },
+          "required": ["path", "quote", "sourceBlockIds"]
         }
       }
     }
